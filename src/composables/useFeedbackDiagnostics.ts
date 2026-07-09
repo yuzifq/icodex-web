@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-const FEEDBACK_EMAIL = 'brutalstrikedevs@gmail.com'
+const FEEDBACK_EMAIL = 'muxue2464@gmail.com'
 const MAX_DIAGNOSTICS = 20
 const MAX_BODY_CHARS = 6500
 const MAX_PAGE_TEXT_CHARS = 1800
