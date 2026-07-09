@@ -30,7 +30,6 @@
           <div v-if="isLoadingReadme" class="sdm-readme-loading">{{ t('Loading skill contents...') }}</div>
           <div v-else-if="readmeContent" class="sdm-readme" v-html="renderedReadme"></div>
 
-          <a v-if="skill.url" class="sdm-link" :href="skill.url" target="_blank" rel="noopener noreferrer">{{ t('View on GitHub') }}</a>
         </div>
 
         <div class="sdm-footer">
@@ -313,10 +312,6 @@ function onBrowseFiles(): void {
 
 .sdm-readme :deep(strong) {
   @apply font-semibold;
-}
-
-.sdm-link {
-  @apply text-xs text-blue-600 hover:text-blue-700 no-underline hover:underline shrink-0;
 }
 
 .sdm-footer {

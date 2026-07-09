@@ -10,7 +10,7 @@ Fresh installs without a runnable Codex CLI show a visible chat runtime error.
 
 #### Steps
 1. In light theme, open the app home/new chat screen.
-2. Confirm the composer area shows `Codex CLI not found. Install @openai/codex or set CODEXUI_CODEX_COMMAND.`
+2. Confirm the composer area shows `Codex CLI not found. Install the official OpenAI Codex CLI from https://developers.openai.com/codex/cli or set CODEXUI_CODEX_COMMAND.`
 3. Confirm the model dropdown no longer fails silently as the only visible symptom.
 4. Switch to dark theme and repeat steps 1-3.
 

@@ -1,7 +1,7 @@
 ### Feature: Startup sync uses deterministic pull reconcile (`fetch + reset --hard`) before local replay
 
 #### Prerequisites
-- Skills sync is logged in and targets `friuns2/codexskills`.
+- Skills sync is logged in and targets a private skills sync repository.
 - Local repo path is `~/.codex/skills`.
 - Startup Sync endpoint is reachable at `/codex-api/skills-sync/startup-sync`.
 

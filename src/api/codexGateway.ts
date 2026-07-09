@@ -56,6 +56,12 @@ import type {
   UiThreadAutomation,
   UiThreadAutomationStatus,
 } from '../types/codex'
+import {
+  normalizeCodexRuntimeConfig,
+  threadStartRuntimeParams,
+  turnStartRuntimeParams,
+  type CodexRuntimeConfig,
+} from '../runtimeAccess'
 import { normalizePathForUi } from '../pathUtils.js'
 
 type CurrentModelConfig = {
@@ -290,6 +296,7 @@ export type StoredQueuedMessage = {
   skills: Array<{ name: string; path: string }>
   fileAttachments: Array<{ label: string; path: string; fsPath: string }>
   collaborationMode: CollaborationModeKind
+  runtimeConfig?: CodexRuntimeConfig
 }
 
 export type ThreadQueueState = Record<string, StoredQueuedMessage[]>
@@ -1668,7 +1675,7 @@ export type ForkedThread = {
   messages: UiMessage[]
 }
 
-export async function startThread(cwd?: string, model?: string): Promise<StartedThread> {
+export async function startThread(cwd?: string, model?: string, runtimeConfig?: CodexRuntimeConfig): Promise<StartedThread> {
   try {
     const params: Record<string, unknown> = {}
     if (typeof cwd === 'string' && cwd.trim().length > 0) {
@@ -1676,6 +1683,9 @@ export async function startThread(cwd?: string, model?: string): Promise<Started
     }
     if (typeof model === 'string' && model.trim().length > 0) {
       params.model = model.trim()
+    }
+    if (runtimeConfig) {
+      Object.assign(params, threadStartRuntimeParams(runtimeConfig))
     }
     const payload = await callRpc<ThreadStartResponse>('thread/start', params)
     const threadId = normalizeThreadIdFromPayload(payload)
@@ -1842,6 +1852,7 @@ export async function startThreadTurn(
   skills?: Array<{ name: string; path: string }>,
   fileAttachments: FileAttachmentParam[] = [],
   collaborationMode?: CollaborationModeKind,
+  runtimeConfig?: CodexRuntimeConfig,
 ): Promise<string> {
   try {
     const normalizedModel = model?.trim() ?? ''
@@ -1893,6 +1904,9 @@ export async function startThreadTurn(
     }
     if (typeof effort === 'string' && effort.length > 0) {
       params.effort = effort
+    }
+    if (runtimeConfig) {
+      Object.assign(params, turnStartRuntimeParams(runtimeConfig))
     }
     if (collaborationMode) {
       const collaborationModeSettings = await resolveCollaborationModeSettings(collaborationMode, normalizedModel, effort)
@@ -2558,6 +2572,7 @@ function normalizeStoredQueuedMessage(value: unknown): StoredQueuedMessage | nul
     skills,
     fileAttachments,
     collaborationMode: record.collaborationMode === 'plan' ? 'plan' : 'default',
+    runtimeConfig: normalizeCodexRuntimeConfig(record.runtimeConfig) ?? undefined,
   }
 }
 

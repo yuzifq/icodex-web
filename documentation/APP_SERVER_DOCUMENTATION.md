@@ -1,6 +1,6 @@
 # APP SERVER DOCUMENTATION
 
-Документ основан на исходниках [openai/codex](https://github.com/openai/codex) (app-server protocol).
+Документ основан на исходниках OpenAI Codex (app-server protocol).
 
 ## Локальная материализация схем
 

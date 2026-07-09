@@ -188,53 +188,25 @@
               {{ t('Take photo') }}
             </button>
             <div class="thread-composer-attach-separator" />
-            <div class="thread-composer-attach-mode">
-              <span class="thread-composer-attach-mode-label">{{ t('In-progress send') }}</span>
-              <div class="thread-composer-attach-mode-buttons">
-                <button
-                  class="thread-composer-attach-mode-button"
-                  :class="{ 'is-active': activeInProgressMode === 'steer' }"
-                  type="button"
-                  :disabled="isInteractionDisabled"
-                  @click="setActiveInProgressMode('steer')"
-                >
-                  {{ t('Steer') }}
-                </button>
-                <button
-                  class="thread-composer-attach-mode-button"
-                  :class="{ 'is-active': activeInProgressMode === 'queue' }"
-                  type="button"
-                  :disabled="isInteractionDisabled"
-                  @click="setActiveInProgressMode('queue')"
-                >
-                  {{ t('Queue') }}
-                </button>
-              </div>
+            <div class="thread-composer-attach-skill-row">
+              <span class="thread-composer-attach-skill-label">{{ t('Skills') }}</span>
+              <ComposerSearchDropdown
+                class="thread-composer-attach-skill-control"
+                :options="skillDropdownOptions"
+                :selected-values="selectedSkillPaths"
+                :placeholder="t('Select...')"
+                :search-placeholder="t('Search skills and prompts...')"
+                :create-label="t('Add new prompt')"
+                :allow-remove="true"
+                :remove-label="t('Remove prompt')"
+                open-direction="up"
+                :disabled="isComposerConfigDisabled"
+                @toggle="onSkillDropdownToggle"
+                @create="onCreatePrompt"
+                @remove="onRemovePrompt"
+              />
             </div>
             <div class="thread-composer-attach-separator" />
-            <button
-              v-if="isFastModeSupported"
-              class="thread-composer-attach-setting"
-              type="button"
-              role="switch"
-              :aria-checked="selectedSpeedMode === 'fast'"
-              :aria-label="`${t('Fast mode')} ${selectedSpeedMode === 'fast' ? t('enabled') : t('disabled')}`"
-              :disabled="isSpeedToggleDisabled"
-              @click="onToggleSpeedMode"
-            >
-              <span class="thread-composer-attach-setting-copy">
-                <span class="thread-composer-attach-setting-label">{{ t('Fast mode') }}</span>
-                <span class="thread-composer-attach-setting-description">{{ speedModeDescription }}</span>
-              </span>
-              <span
-                class="thread-composer-attach-switch"
-                :class="{
-                  'is-on': selectedSpeedMode === 'fast',
-                  'is-busy': isUpdatingSpeedMode,
-                  'is-disabled': isSpeedToggleDisabled,
-                }"
-              />
-            </button>
             <button
               class="thread-composer-attach-setting"
               type="button"
@@ -256,46 +228,143 @@
           </div>
         </div>
 
-        <template v-if="!isDictationRecording">
-          <ComposerDropdown
-            class="thread-composer-control"
-            :model-value="selectedModel"
-            :options="modelOptions"
-            :selected-prefix-icon="showFastModeModelIcon ? IconTablerBolt : null"
-            :placeholder="t('Model')"
-            open-direction="up"
-            :disabled="isComposerConfigDisabled || models.length === 0"
-            enable-search
-            :search-placeholder="t('Search models...')"
-            @update:model-value="onModelSelect"
-          />
+        <ComposerDropdown
+          v-if="!isDictationRecording"
+          v-model="selectedAccessMode"
+          :class="['thread-composer-access-dropdown', accessModeThemeClass]"
+          :options="accessModeOptions"
+          :placeholder="t('Request approval')"
+          :disabled="isComposerConfigDisabled"
+          :selected-prefix-icon="selectedAccessModeIcon"
+          open-direction="up"
+        />
 
-          <ComposerSearchDropdown
-            class="thread-composer-control"
-            :options="skillDropdownOptions"
-            :selected-values="selectedSkillPaths"
-            :placeholder="t('Skills')"
-            :search-placeholder="t('Search skills and prompts...')"
-            :create-label="t('Add new prompt')"
-            :allow-remove="true"
-            :remove-label="t('Remove prompt')"
-            open-direction="up"
-            :disabled="isComposerConfigDisabled"
-            @toggle="onSkillDropdownToggle"
-            @create="onCreatePrompt"
-            @remove="onRemovePrompt"
-          />
+        <span v-if="!isDictationRecording" class="thread-composer-controls-spacer" aria-hidden="true" />
 
-          <ComposerDropdown
-            class="thread-composer-control"
-            :model-value="selectedReasoningEffort"
-            :options="reasoningOptions"
-            :placeholder="t('Thinking')"
-            open-direction="up"
+        <div
+          v-if="!isDictationRecording && contextUsageView"
+          class="thread-composer-context-ring"
+          :class="`is-${contextUsageTone}`"
+          :style="contextUsageRingStyle"
+          :aria-label="contextUsageAriaLabel"
+          tabindex="0"
+        >
+          <span class="thread-composer-context-ring-core" aria-hidden="true" />
+          <span class="thread-composer-context-tooltip" role="tooltip">
+            <span class="thread-composer-context-tooltip-title">{{ t('Context window:') }}</span>
+            <span>{{ contextUsagePercentText }}</span>
+            <span>{{ contextUsageTokenText }}</span>
+          </span>
+        </div>
+
+        <div v-if="!isDictationRecording" ref="composerConfigMenuRootRef" class="thread-composer-config">
+          <button
+            class="thread-composer-config-trigger"
+            type="button"
+            :title="composerConfigLabel"
+            :aria-label="composerConfigLabel"
             :disabled="isComposerConfigDisabled"
-            @update:model-value="onReasoningEffortSelect"
-          />
-        </template>
+            @click="toggleComposerConfigMenu"
+          >
+            <IconTablerBolt v-if="showFastModeModelIcon" class="thread-composer-config-fast-icon" />
+            <span class="thread-composer-config-value">{{ composerConfigLabel }}</span>
+            <IconTablerChevronDown class="thread-composer-config-chevron" />
+          </button>
+
+          <div v-if="isComposerConfigMenuOpen" class="thread-composer-config-menu-wrap">
+            <div class="thread-composer-config-menu" role="menu">
+              <div class="thread-composer-config-heading">{{ t('Reasoning') }}</div>
+              <button
+                v-for="option in reasoningOptions"
+                :key="option.value"
+                class="thread-composer-config-option"
+                type="button"
+                role="menuitemradio"
+                :aria-checked="selectedReasoningEffortForUi === option.value"
+                @click="onReasoningEffortSelect(option.value)"
+              >
+                <span>{{ option.label }}</span>
+                <span v-if="selectedReasoningEffortForUi === option.value" class="thread-composer-config-check">✓</span>
+              </button>
+              <div class="thread-composer-config-separator" />
+              <button
+                class="thread-composer-config-option thread-composer-config-option-nav"
+                :class="{ 'is-active': composerConfigMenuView === 'model' }"
+                type="button"
+                role="menuitem"
+                :disabled="models.length === 0"
+                @click="composerConfigMenuView = 'model'"
+                @mouseenter="composerConfigMenuView = 'model'"
+              >
+                <span>{{ selectedModelLabel }}</span>
+                <IconTablerChevronRight class="thread-composer-config-nav-icon" />
+              </button>
+              <button
+                class="thread-composer-config-option thread-composer-config-option-nav"
+                :class="{ 'is-active': composerConfigMenuView === 'speed' }"
+                type="button"
+                role="menuitem"
+                @click="composerConfigMenuView = 'speed'"
+                @mouseenter="composerConfigMenuView = 'speed'"
+              >
+                <span>{{ t('Speed') }}</span>
+                <IconTablerChevronRight class="thread-composer-config-nav-icon" />
+              </button>
+            </div>
+
+            <div v-if="composerConfigMenuView === 'model'" class="thread-composer-config-submenu" role="menu">
+              <div class="thread-composer-config-heading">{{ t('Model') }}</div>
+              <input
+                v-if="modelOptions.length > 5"
+                v-model="modelSearchQuery"
+                class="thread-composer-config-search"
+                type="search"
+                :placeholder="t('Search models...')"
+                @keydown.enter.stop.prevent
+              >
+              <div class="thread-composer-config-scroll">
+                <button
+                  v-for="option in filteredModelOptions"
+                  :key="option.value"
+                  class="thread-composer-config-option"
+                  type="button"
+                  role="menuitemradio"
+                  :aria-checked="selectedModel === option.value"
+                  @click="onModelSelect(option.value)"
+                >
+                  <span>{{ option.label }}</span>
+                  <span v-if="selectedModel === option.value" class="thread-composer-config-check">✓</span>
+                </button>
+                <div v-if="filteredModelOptions.length === 0" class="thread-composer-config-empty">
+                  {{ t('No matching models') }}
+                </div>
+              </div>
+            </div>
+
+            <div v-if="composerConfigMenuView === 'speed'" class="thread-composer-config-submenu" role="menu">
+              <div class="thread-composer-config-heading">{{ t('Speed') }}</div>
+              <button
+                v-for="option in speedModeOptions"
+                :key="option.value"
+                class="thread-composer-config-option thread-composer-config-option-rich"
+                type="button"
+                role="menuitemradio"
+                :aria-checked="selectedSpeedMode === option.value"
+                :disabled="isSpeedModeOptionDisabled(option.value)"
+                @click="onSpeedModeSelect(option.value)"
+              >
+                <span class="thread-composer-config-option-copy">
+                  <span class="thread-composer-config-option-title">
+                    <IconTablerBolt v-if="option.value === 'fast'" class="thread-composer-config-option-icon" />
+                    <span>{{ option.label }}</span>
+                  </span>
+                  <span class="thread-composer-config-option-description">{{ option.description }}</span>
+                </span>
+                <span v-if="selectedSpeedMode === option.value" class="thread-composer-config-check">✓</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div
           class="thread-composer-actions"
@@ -390,7 +459,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import type {
   CollaborationModeKind,
   CollaborationModeOption,
@@ -399,7 +468,6 @@ import type {
   UiRateLimitSnapshot,
   UiRateLimitWindow,
   UiThreadTokenUsage,
-  UiTokenUsageBreakdown,
 } from '../../types/codex'
 import { useDictation } from '../../composables/useDictation'
 import { useMobile } from '../../composables/useMobile'
@@ -413,14 +481,26 @@ import {
   type ComposerFileSuggestion,
   type ComposerPromptInfo,
 } from '../../api/codexGateway'
+import {
+  normalizeCodexAccessMode,
+  runtimeConfigForAccessMode,
+  type CodexAccessMode,
+  type CodexRuntimeConfig,
+} from '../../runtimeAccess'
 import IconTablerArrowUp from '../icons/IconTablerArrowUp.vue'
 import IconTablerBolt from '../icons/IconTablerBolt.vue'
+import IconTablerChevronDown from '../icons/IconTablerChevronDown.vue'
+import IconTablerChevronLeft from '../icons/IconTablerChevronLeft.vue'
+import IconTablerChevronRight from '../icons/IconTablerChevronRight.vue'
 import IconTablerFilePencil from '../icons/IconTablerFilePencil.vue'
 import IconTablerFolder from '../icons/IconTablerFolder.vue'
+import IconTablerHandStop from '../icons/IconTablerHandStop.vue'
 import IconTablerMaximize from '../icons/IconTablerMaximize.vue'
 import IconTablerMicrophone from '../icons/IconTablerMicrophone.vue'
 import IconTablerMinimize from '../icons/IconTablerMinimize.vue'
 import IconTablerPlayerStopFilled from '../icons/IconTablerPlayerStopFilled.vue'
+import IconTablerShieldCheck from '../icons/IconTablerShieldCheck.vue'
+import IconTablerShieldExclamation from '../icons/IconTablerShieldExclamation.vue'
 import ComposerDropdown from './ComposerDropdown.vue'
 import ComposerSearchDropdown from './ComposerSearchDropdown.vue'
 
@@ -472,6 +552,7 @@ export type SubmitPayload = {
   fileAttachments: FileAttachment[]
   skills: Array<{ name: string; path: string }>
   mode: 'steer' | 'queue'
+  runtimeConfig: CodexRuntimeConfig
 }
 
 export type ThreadComposerExposed = {
@@ -488,7 +569,7 @@ const emit = defineEmits<{
   'update:selected-reasoning-effort': [effort: ReasoningEffort | '']
   'update:selected-speed-mode': [mode: SpeedMode]
 }>()
-const { t } = useUiLanguage()
+const { t, uiLanguage } = useUiLanguage()
 
 type SelectedImage = {
   id: string
@@ -561,12 +642,16 @@ const {
   },
 })
 const attachMenuRootRef = ref<HTMLElement | null>(null)
+const composerConfigMenuRootRef = ref<HTMLElement | null>(null)
 const photoLibraryInputRef = ref<HTMLInputElement | null>(null)
 const cameraCaptureInputRef = ref<HTMLInputElement | null>(null)
 const folderPickerInputRef = ref<HTMLInputElement | null>(null)
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const { isMobile } = useMobile()
 const isAttachMenuOpen = ref(false)
+const isComposerConfigMenuOpen = ref(false)
+const composerConfigMenuView = ref<'main' | 'model' | 'speed'>('main')
+const modelSearchQuery = ref('')
 const mentionStartIndex = ref<number | null>(null)
 const mentionQuery = ref('')
 const fileMentionSuggestions = ref<ComposerFileSuggestion[]>([])
@@ -585,21 +670,82 @@ const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.
 const DRAFT_STORAGE_PREFIX = 'codex-web-local.thread-draft.v1.'
 let lastActiveThreadId = ''
 
-const reasoningOptions: Array<{ value: ReasoningEffort; label: string }> = [
-  { value: 'none', label: 'None' },
-  { value: 'minimal', label: 'Minimal' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'xhigh', label: 'Extra high' },
-]
+const reasoningOptions = computed<Array<{ value: ReasoningEffort; label: string }>>(() => [
+  { value: 'low', label: t('Low') },
+  { value: 'medium', label: t('Medium') },
+  { value: 'high', label: t('High') },
+  { value: 'xhigh', label: t('Extra high') },
+])
+
+const selectedAccessMode = ref<CodexAccessMode>('request')
+const accessModeIcons: Record<CodexAccessMode, Component> = {
+  request: IconTablerHandStop,
+  auto: IconTablerShieldCheck,
+  full: IconTablerShieldExclamation,
+}
+const accessModeOptions = computed<Array<{ value: CodexAccessMode; label: string; description: string }>>(() => [
+  {
+    value: 'request',
+    label: t('Request approval'),
+    description: t('Always ask before editing external files or using the internet'),
+  },
+  {
+    value: 'auto',
+    label: t('Approve for me'),
+    description: t('Only ask for detected risky operations'),
+  },
+  {
+    value: 'full',
+    label: t('Full access'),
+    description: t('Access the internet and any file on this computer without restriction'),
+  },
+])
+const selectedAccessModeIcon = computed(() => accessModeIcons[selectedAccessMode.value])
+const accessModeThemeClass = computed(() => `is-${selectedAccessMode.value}`)
+
 function formatModelLabel(modelId: string): string {
-  return modelId.trim().replace(/^gpt/i, 'GPT')
+  return modelId.trim().replace(/^gpt/i, 'GPT').replace(/-mini\b/i, '-Mini')
+}
+
+function formatCompactModelLabel(modelId: string): string {
+  const trimmed = modelId.trim()
+  if (!trimmed) return t('Model')
+  return trimmed.replace(/^gpt-/i, '')
 }
 
 const modelOptions = computed(() =>
   props.models.map((modelId) => ({ value: modelId, label: formatModelLabel(modelId) })),
 )
+const filteredModelOptions = computed(() => {
+  const query = modelSearchQuery.value.trim().toLowerCase()
+  if (!query) return modelOptions.value
+  return modelOptions.value.filter((option) =>
+    option.label.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
+  )
+})
+const selectedModelLabel = computed(() => formatModelLabel(props.selectedModel))
+const selectedCompactModelLabel = computed(() => formatCompactModelLabel(props.selectedModel))
+const selectedReasoningEffortForUi = computed<ReasoningEffort>(() => (
+  reasoningOptions.value.some((option) => option.value === props.selectedReasoningEffort)
+    ? props.selectedReasoningEffort as ReasoningEffort
+    : 'medium'
+))
+const selectedReasoningLabel = computed(() => (
+  reasoningOptions.value.find((option) => option.value === selectedReasoningEffortForUi.value)?.label ?? t('Medium')
+))
+const composerConfigLabel = computed(() => `${selectedCompactModelLabel.value} ${selectedReasoningLabel.value}`.trim())
+const speedModeOptions = computed<Array<{ value: SpeedMode; label: string; description: string }>>(() => [
+  {
+    value: 'standard',
+    label: t('Standard'),
+    description: t('Default speed with normal credit usage'),
+  },
+  {
+    value: 'fast',
+    label: t('Fast'),
+    description: t('About 1.5x faster, with credits used at 2x'),
+  },
+])
 const isPlanModeSelected = computed(() => props.selectedCollaborationMode === 'plan')
 
 const isPlanModeWaitingForModel = computed(() =>
@@ -664,14 +810,6 @@ const showFastModeModelIcon = computed(() =>
 const isSpeedToggleDisabled = computed(() =>
   isInteractionDisabled.value || props.isUpdatingSpeedMode === true,
 )
-const speedModeDescription = computed(() => {
-  if (props.isUpdatingSpeedMode) {
-    return t('Saving speed setting...')
-  }
-  return props.selectedSpeedMode === 'fast'
-    ? t('About 1.5x faster, with credits used at 2x')
-    : t('Default speed with normal credit usage')
-})
 const inProgressMode = computed<'steer' | 'queue'>(() =>
   props.inProgressSubmitMode === 'steer' ? 'steer' : 'queue',
 )
@@ -719,7 +857,9 @@ const placeholderText = computed(() =>
     ? t('Select a thread to send a message')
     : isPlanModeWaitingForModel.value
       ? t('Loading models for plan mode...')
-      : t('Type a message... (@ for files)'),
+      : props.activeThreadId === '__new-thread__'
+        ? t('Freeform input')
+        : t('Request follow-up changes'),
 )
 const hasSubmitContent = computed(() =>
   draft.value.trim().length > 0 || selectedImages.value.length > 0 || fileAttachments.value.length > 0,
@@ -732,9 +872,12 @@ const quotaSummaryText = computed(() => buildQuotaSummaryText(props.codexQuota ?
 const quotaWeeklyRefreshText = computed(() => '')
 const quotaTooltipText = computed(() => buildQuotaTooltipText(props.codexQuota ?? null))
 const contextUsageView = computed(() => buildContextUsageView(props.threadTokenUsage ?? null))
-const contextUsageSummaryText = computed(() => contextUsageView.value?.summaryText ?? '')
-const contextUsageTooltipText = computed(() => contextUsageView.value?.tooltipText ?? '')
-const contextUsageRemainingPercent = computed(() => contextUsageView.value?.percentRemaining ?? 0)
+const contextUsagePercentText = computed(() => contextUsageView.value?.percentText ?? '')
+const contextUsageTokenText = computed(() => contextUsageView.value?.tokenText ?? '')
+const contextUsageAriaLabel = computed(() => contextUsageView.value?.ariaLabel ?? '')
+const contextUsageRingStyle = computed(() => ({
+  '--context-usage-angle': `${(contextUsageView.value?.percentUsed ?? 0) * 3.6}deg`,
+}))
 const contextUsageTone = computed(() => contextUsageView.value?.tone ?? 'healthy')
 
 function formatPlanType(planType: string | null | undefined): string {
@@ -779,8 +922,10 @@ function formatResetDate(resetsAt: number | null): string {
 
 function formatResetDateCompact(resetsAt: number | null): string {
   if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
-  const date = new Date(resetsAt * 1000)
-  return `${date.getMonth() + 1}月${date.getDate()}日`
+  return new Intl.DateTimeFormat(uiLanguage.value === 'zh-CN' ? 'zh-CN' : 'en', {
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(resetsAt * 1000))
 }
 
 function pickWeeklyQuotaWindow(quota: UiRateLimitSnapshot): UiRateLimitWindow | null {
@@ -884,24 +1029,6 @@ function formatCompactTokenCount(value: number): string {
   return String(Math.round(value))
 }
 
-function formatBreakdownSummary(breakdown: UiTokenUsageBreakdown): string {
-  const nonCachedInput = Math.max(0, breakdown.inputTokens - breakdown.cachedInputTokens)
-  const parts = [
-    `${formatCompactTokenCount(breakdown.totalTokens)} total`,
-    `${formatCompactTokenCount(nonCachedInput)} input`,
-  ]
-  if (breakdown.cachedInputTokens > 0) {
-    parts.push(`${formatCompactTokenCount(breakdown.cachedInputTokens)} cached`)
-  }
-  if (breakdown.outputTokens > 0) {
-    parts.push(`${formatCompactTokenCount(breakdown.outputTokens)} output`)
-  }
-  if (breakdown.reasoningOutputTokens > 0) {
-    parts.push(`${formatCompactTokenCount(breakdown.reasoningOutputTokens)} reasoning`)
-  }
-  return parts.join(' · ')
-}
-
 function calculateContextPercentRemaining(tokensInContext: number, contextWindow: number): number {
   // Mirror official Codex normalization so the first prompt does not look artificially "used".
   if (!Number.isFinite(tokensInContext) || !Number.isFinite(contextWindow) || contextWindow <= 0) {
@@ -920,8 +1047,10 @@ function calculateContextPercentRemaining(tokensInContext: number, contextWindow
 function buildContextUsageView(
   usage: UiThreadTokenUsage | null,
 ): {
-    summaryText: string
-    tooltipText: string
+    percentText: string
+    tokenText: string
+    ariaLabel: string
+    percentUsed: number
     percentRemaining: number
     tone: 'healthy' | 'warning' | 'danger'
   } | null {
@@ -930,23 +1059,33 @@ function buildContextUsageView(
   const contextWindow = usage.modelContextWindow ?? null
   if (typeof contextWindow !== 'number' || !Number.isFinite(contextWindow) || contextWindow <= 0) return null
 
-  const tokensInContext = Math.max(0, usage.last.totalTokens)
-  const percentRemaining = calculateContextPercentRemaining(tokensInContext, contextWindow)
+  const tokensInContext = Math.max(0, usage.currentContextTokens)
+  const percentRemaining = typeof usage.remainingContextPercent === 'number' && Number.isFinite(usage.remainingContextPercent)
+    ? Math.max(0, Math.min(100, Math.round(usage.remainingContextPercent)))
+    : calculateContextPercentRemaining(tokensInContext, contextWindow)
   const percentUsed = Math.max(0, Math.min(100, 100 - percentRemaining))
   const tone: 'healthy' | 'warning' | 'danger' = percentRemaining <= 15
     ? 'danger'
     : percentRemaining <= 35
       ? 'warning'
       : 'healthy'
+  const percentText = t('{used}% used ({remaining}% remaining)', {
+    used: percentUsed,
+    remaining: percentRemaining,
+  })
+  const tokenText = t('Used {used} tokens of {total}', {
+    used: formatCompactTokenCount(tokensInContext),
+    total: formatCompactTokenCount(contextWindow),
+  })
 
   return {
-    summaryText: `${percentRemaining}% · ${formatCompactTokenCount(tokensInContext)} / ${formatCompactTokenCount(contextWindow)}`,
-    tooltipText: [
-      `Context window: ${percentRemaining}% left (${percentUsed}% used)`,
-      `In context: ${tokensInContext.toLocaleString()} / ${contextWindow.toLocaleString()} tokens`,
-      `Last turn: ${formatBreakdownSummary(usage.last)}`,
-      `Session total: ${formatBreakdownSummary(usage.total)}`,
-    ].join('\n'),
+    percentText,
+    tokenText,
+    ariaLabel: t('Context window: {percent}. {tokens}', {
+      percent: percentText,
+      tokens: tokenText,
+    }),
+    percentUsed,
     percentRemaining,
     tone,
   }
@@ -961,12 +1100,14 @@ function onSubmit(mode: 'steer' | 'queue' = 'steer'): void {
     fileAttachments: [...fileAttachments.value],
     skills: selectedSkills.value.map((s) => ({ name: s.name, path: s.path })),
     mode,
+    runtimeConfig: runtimeConfigForAccessMode(normalizeCodexAccessMode(selectedAccessMode.value)),
   })
   clearPersistedDraftForThread(props.activeThreadId)
   clearDraftState()
   isComposerExpanded.value = false
   folderUploadGroups.value = []
   isAttachMenuOpen.value = false
+  closeComposerConfigMenu()
   closeFileMention()
   if (isAndroid || isMobile.value) {
     inputRef.value?.blur()
@@ -997,6 +1138,7 @@ function replaceDraftState(payload: ComposerDraftPayload): void {
   attachmentBatchStats.value = null
   pendingAttachmentCount.value = 0
   isAttachMenuOpen.value = false
+  closeComposerConfigMenu()
   closeFileMention()
   attachmentSessionToken += 1
 }
@@ -1125,6 +1267,7 @@ function toggleComposerExpanded(): void {
 
 function onModelSelect(value: string): void {
   emit('update:selected-model', value)
+  closeComposerConfigMenu()
 }
 
 function toggleCollaborationMode(): void {
@@ -1133,11 +1276,33 @@ function toggleCollaborationMode(): void {
 
 function onReasoningEffortSelect(value: string): void {
   emit('update:selected-reasoning-effort', value as ReasoningEffort)
+  closeComposerConfigMenu()
 }
 
-function onToggleSpeedMode(): void {
-  if (isSpeedToggleDisabled.value) return
-  emit('update:selected-speed-mode', props.selectedSpeedMode === 'fast' ? 'standard' : 'fast')
+function onSpeedModeSelect(value: SpeedMode): void {
+  if (isSpeedModeOptionDisabled(value)) return
+  emit('update:selected-speed-mode', value)
+  closeComposerConfigMenu()
+}
+
+function toggleComposerConfigMenu(): void {
+  if (isComposerConfigDisabled.value) return
+  isComposerConfigMenuOpen.value = !isComposerConfigMenuOpen.value
+  if (isComposerConfigMenuOpen.value) {
+    composerConfigMenuView.value = 'main'
+    isAttachMenuOpen.value = false
+  }
+}
+
+function closeComposerConfigMenu(): void {
+  isComposerConfigMenuOpen.value = false
+  composerConfigMenuView.value = 'main'
+  modelSearchQuery.value = ''
+}
+
+function isSpeedModeOptionDisabled(value: SpeedMode): boolean {
+  if (isSpeedToggleDisabled.value) return true
+  return value === 'fast' && !isFastModeSupported.value
 }
 
 function onDictationToggle(): void {
@@ -1183,6 +1348,9 @@ function onDictationPressEnd(): void {
 function toggleAttachMenu(): void {
   if (isInteractionDisabled.value) return
   isAttachMenuOpen.value = !isAttachMenuOpen.value
+  if (isAttachMenuOpen.value) {
+    closeComposerConfigMenu()
+  }
 }
 
 function triggerPhotoLibrary(): void {
@@ -1797,12 +1965,24 @@ function onSkillDropdownToggle(path: string, checked: boolean): void {
 }
 
 function onDocumentClick(event: MouseEvent): void {
-  if (!isAttachMenuOpen.value) return
-  const root = attachMenuRootRef.value
-  if (!root) return
   const target = event.target as Node | null
-  if (!target || root.contains(target)) return
-  isAttachMenuOpen.value = false
+  if (!target) return
+
+  if (isAttachMenuOpen.value) {
+    const root = attachMenuRootRef.value
+    if (root && !root.contains(target)) {
+      if (!(target instanceof Element && target.closest('.search-dropdown-menu-wrap'))) {
+        isAttachMenuOpen.value = false
+      }
+    }
+  }
+
+  if (isComposerConfigMenuOpen.value) {
+    const root = composerConfigMenuRootRef.value
+    if (!root || !root.contains(target)) {
+      closeComposerConfigMenu()
+    }
+  }
 }
 
 onMounted(() => {
@@ -1891,7 +2071,7 @@ watch(
 }
 
 .thread-composer-shell {
-  @apply relative rounded-2xl border border-zinc-300 bg-white p-2 sm:p-3 shadow-sm;
+  @apply relative rounded-[18px] border border-zinc-200 bg-white p-0 shadow-[0_16px_50px_rgba(15,23,42,0.10)];
 }
 
 .thread-composer:has(.thread-composer-input-wrap--expanded) .thread-composer-shell {
@@ -1994,35 +2174,44 @@ watch(
   @apply min-w-0 flex-1 truncate;
 }
 
-.thread-composer-context-usage-inline {
-  --context-usage-accent: rgb(34 197 94);
-  @apply ml-auto inline-flex min-w-0 max-w-[56%] items-center gap-2 text-right;
+.thread-composer-context-ring {
+  --context-usage-accent: rgb(113 113 122);
+  --context-usage-angle: 0deg;
+  @apply relative inline-flex h-4 w-4 shrink-0 cursor-default items-center justify-center rounded-full outline-none transition;
+  background: conic-gradient(var(--context-usage-accent) var(--context-usage-angle), rgb(212 212 216) 0deg);
 }
 
-.thread-composer-context-usage-inline.is-warning {
+.thread-composer-context-ring.is-warning {
   --context-usage-accent: rgb(245 158 11);
 }
 
-.thread-composer-context-usage-inline.is-danger {
-  --context-usage-accent: rgb(239 68 68);
+.thread-composer-context-ring.is-danger {
+  --context-usage-accent: rgb(244 63 94);
 }
 
-.thread-composer-context-usage-inline-value {
-  @apply min-w-0 truncate font-medium tabular-nums;
-  color: var(--context-usage-accent);
+.thread-composer-context-ring:focus-visible {
+  @apply ring-2 ring-zinc-500/70;
 }
 
-.thread-composer-context-usage-inline-bar {
-  @apply block h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-zinc-200/80;
+.thread-composer-context-ring-core {
+  @apply h-2.5 w-2.5 rounded-full bg-white;
 }
 
-.thread-composer-context-usage-inline-bar-fill {
-  @apply block h-full rounded-full transition-[width] duration-200 ease-out;
-  background: var(--context-usage-accent);
+.thread-composer-context-tooltip {
+  @apply pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-[60] hidden w-[12.5rem] -translate-x-1/2 flex-col gap-1 rounded-lg border border-zinc-700 bg-[#2b2b2d] px-3 py-2 text-left text-sm leading-5 text-zinc-100 shadow-[0_16px_36px_rgba(0,0,0,0.45)];
+}
+
+.thread-composer-context-ring:hover .thread-composer-context-tooltip,
+.thread-composer-context-ring:focus-visible .thread-composer-context-tooltip {
+  @apply flex;
+}
+
+.thread-composer-context-tooltip-title {
+  @apply text-xs font-medium text-zinc-400;
 }
 
 .thread-composer-input-wrap {
-  @apply relative;
+  @apply relative rounded-t-[18px];
 }
 
 .thread-composer-input-wrap--expanded {
@@ -2094,7 +2283,7 @@ watch(
 }
 
 .thread-composer-input {
-  @apply w-full min-w-0 min-h-10 sm:min-h-11 max-h-40 rounded-xl border-0 bg-transparent px-1 py-2 pr-10 text-sm text-zinc-900 outline-none transition resize-none overflow-y-auto;
+  @apply h-[70px] max-h-40 min-h-[70px] w-full min-w-0 resize-none rounded-t-[18px] border-0 bg-transparent px-[18px] pb-2 pt-4 pr-12 text-base text-zinc-900 outline-none transition overflow-y-auto placeholder:text-zinc-300;
 }
 
 .thread-composer-input-wrap--expanded .thread-composer-input {
@@ -2110,7 +2299,7 @@ watch(
 }
 
 .thread-composer-expand {
-  @apply absolute right-0.5 top-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border-0 bg-zinc-100 text-zinc-500 shadow-sm transition hover:bg-zinc-200 hover:text-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-400;
+  @apply absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full border-0 bg-zinc-100 text-zinc-500 shadow-sm transition hover:bg-zinc-200 hover:text-zinc-800 disabled:cursor-not-allowed disabled:text-zinc-400;
 }
 
 .thread-composer-expand-icon {
@@ -2118,7 +2307,7 @@ watch(
 }
 
 .thread-composer-controls {
-  @apply relative mt-2 sm:mt-3 flex items-center gap-2 sm:gap-4 overflow-visible pb-px;
+  @apply relative mt-0 flex min-h-[42px] items-center gap-2 overflow-visible px-3 pb-3;
 }
 
 .thread-composer-controls--recording {
@@ -2130,7 +2319,7 @@ watch(
 }
 
 .thread-composer-attach-trigger {
-  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-none border-0 bg-transparent pb-px text-xl leading-tight text-zinc-700 transition hover:text-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-400;
+  @apply inline-flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent pb-px text-xl leading-tight text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:text-zinc-400;
 }
 
 .thread-composer-attach-menu {
@@ -2163,6 +2352,26 @@ watch(
 
 .thread-composer-attach-mode-button.is-active {
   @apply bg-zinc-900 text-white hover:text-white;
+}
+
+.thread-composer-attach-skill-row {
+  @apply flex items-center justify-between gap-3 px-3 py-2;
+}
+
+.thread-composer-attach-skill-label {
+  @apply shrink-0 text-sm text-zinc-800;
+}
+
+.thread-composer-attach-skill-control {
+  @apply min-w-0 max-w-[9rem] justify-end;
+}
+
+.thread-composer-attach-skill-control :deep(.search-dropdown-trigger) {
+  @apply w-full justify-end gap-1 text-sm text-zinc-600 hover:text-zinc-900;
+}
+
+.thread-composer-attach-skill-control :deep(.search-dropdown-value) {
+  @apply max-w-[7.5rem] truncate text-right;
 }
 
 .thread-composer-attach-setting {
@@ -2210,13 +2419,185 @@ watch(
   @apply shrink-1 min-w-0;
 }
 
+.thread-composer-control :deep(.composer-dropdown-trigger) {
+  @apply h-7 min-h-7 rounded-lg border border-[#3f3f3f] bg-[#252525] px-2.5 py-0 text-xs leading-none text-zinc-200 transition hover:bg-[#303030] disabled:text-zinc-500;
+}
+
 .thread-composer-control :deep(.composer-dropdown-value) {
-  @apply truncate;
+  @apply truncate text-zinc-200;
+}
+
+.thread-composer-control :deep(.composer-dropdown-chevron) {
+  @apply text-zinc-400;
+}
+
+.thread-composer-access-dropdown {
+  --thread-composer-access-color: #71717a;
+  --thread-composer-access-hover-bg: #f4f4f5;
+  @apply shrink-0;
+}
+
+.thread-composer-access-dropdown.is-request {
+  --thread-composer-access-color: #71717a;
+  --thread-composer-access-hover-bg: #f4f4f5;
+}
+
+.thread-composer-access-dropdown.is-auto {
+  --thread-composer-access-color: #5aa8ff;
+  --thread-composer-access-hover-bg: #eff6ff;
+}
+
+.thread-composer-access-dropdown.is-full {
+  --thread-composer-access-color: #f45f16;
+  --thread-composer-access-hover-bg: #fff7ed;
+}
+
+.thread-composer-access-dropdown :deep(.composer-dropdown-trigger) {
+  color: var(--thread-composer-access-color);
+  @apply h-7 min-h-7 gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-0 text-xs font-medium leading-none transition disabled:cursor-not-allowed disabled:text-zinc-400;
+}
+
+.thread-composer-access-dropdown :deep(.composer-dropdown-trigger:hover) {
+  background: var(--thread-composer-access-hover-bg);
+}
+
+.thread-composer-access-dropdown :deep(.composer-dropdown-value) {
+  color: var(--thread-composer-access-color) !important;
+}
+
+.thread-composer-access-dropdown :deep(.composer-dropdown-prefix-icon) {
+  color: var(--thread-composer-access-color) !important;
+  @apply h-4 w-4 text-inherit;
+}
+
+.thread-composer-access-dropdown :deep(.composer-dropdown-chevron) {
+  color: var(--thread-composer-access-color) !important;
+  @apply h-3.5 w-3.5;
+}
+
+.thread-composer-access-dropdown :deep(.composer-dropdown-menu) {
+  @apply min-w-40;
+}
+
+.thread-composer-access-dropdown :deep(.composer-dropdown-option.is-selected) {
+  color: var(--thread-composer-access-color);
+  @apply font-semibold;
+}
+
+.thread-composer-access-dropdown :deep(.composer-dropdown-option.is-selected .composer-dropdown-option-label) {
+  color: var(--thread-composer-access-color);
+}
+
+.thread-composer-controls-spacer {
+  @apply min-w-2 flex-1;
+}
+
+.thread-composer-config {
+  @apply relative min-w-0 shrink-0;
+}
+
+.thread-composer-config-trigger {
+  @apply inline-flex h-7 max-w-[8.5rem] items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-0 text-xs leading-none text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400;
+}
+
+.thread-composer-config-value {
+  @apply min-w-0 truncate;
+}
+
+.thread-composer-config-chevron {
+  @apply h-3.5 w-3.5 shrink-0 text-zinc-400;
+}
+
+.thread-composer-config-fast-icon {
+  @apply h-3.5 w-3.5 shrink-0 text-amber-400;
+}
+
+.thread-composer-config-menu-wrap {
+  @apply absolute bottom-[calc(100%+8px)] right-0 z-50 overflow-visible;
+}
+
+.thread-composer-config-menu,
+.thread-composer-config-submenu {
+  @apply w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-zinc-700 bg-[#2b2b2d] py-1 text-sm text-zinc-100 shadow-[0_18px_48px_rgba(0,0,0,0.45)];
+}
+
+.thread-composer-config-submenu {
+  @apply absolute bottom-0 right-[calc(100%+4px)] w-72;
+}
+
+.thread-composer-config-heading {
+  @apply px-3 pb-1.5 pt-2 text-xs font-medium text-zinc-400;
+}
+
+.thread-composer-config-option {
+  @apply flex min-h-9 w-full items-center justify-between gap-3 border-0 bg-transparent px-3 py-2 text-left text-sm text-zinc-100 transition hover:bg-zinc-700/80 disabled:cursor-default disabled:opacity-50;
+}
+
+.thread-composer-config-option.is-active {
+  @apply bg-zinc-700/80;
+}
+
+.thread-composer-config-option-rich {
+  @apply min-h-14 items-start py-2.5;
+}
+
+.thread-composer-config-option-copy {
+  @apply min-w-0 flex flex-col gap-0.5;
+}
+
+.thread-composer-config-option-title {
+  @apply flex items-center gap-1.5 font-medium;
+}
+
+.thread-composer-config-option-icon {
+  @apply h-4 w-4 shrink-0;
+}
+
+.thread-composer-config-option-description {
+  @apply text-xs leading-4 text-zinc-400;
+}
+
+.thread-composer-config-check {
+  @apply shrink-0 text-zinc-100;
+}
+
+.thread-composer-config-separator {
+  @apply my-1 h-px bg-zinc-700;
+}
+
+.thread-composer-config-nav-icon {
+  @apply h-4 w-4 shrink-0 text-zinc-400;
+}
+
+.thread-composer-config-back {
+  @apply flex min-h-9 w-full items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm font-medium text-zinc-100 transition hover:bg-zinc-700/80;
+}
+
+.thread-composer-config-back-icon {
+  @apply h-4 w-4 shrink-0 text-zinc-400;
+}
+
+.thread-composer-config-scroll {
+  @apply max-h-56 overflow-y-auto;
+}
+
+.thread-composer-config-search {
+  @apply mx-2 mb-1 w-[calc(100%-1rem)] rounded-lg border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-zinc-500;
+}
+
+.thread-composer-config-empty {
+  @apply px-3 py-2 text-sm text-zinc-400;
+}
+
+@media (max-width: 640px) {
+  .thread-composer-config-submenu {
+    @apply right-0 bottom-[calc(100%+4px)] w-72 max-w-[calc(100vw-2rem)];
+  }
 }
 
 
 .thread-composer-actions {
-  @apply ml-auto flex min-w-0 items-center gap-2;
+  @apply flex min-w-0 items-center gap-2;
 }
 
 .thread-composer-actions--recording {
@@ -2224,7 +2605,7 @@ watch(
 }
 
 .thread-composer-mic {
-  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-0 bg-zinc-100 text-zinc-600 transition hover:bg-zinc-200 hover:text-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-400;
+  @apply inline-flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:text-zinc-400;
   touch-action: none;
 }
 
@@ -2233,7 +2614,7 @@ watch(
 }
 
 .thread-composer-mic-icon {
-  @apply h-5 w-5;
+  @apply h-4.5 w-4.5;
 }
 
 .thread-composer-dictation-waveform-wrap {
@@ -2253,7 +2634,7 @@ watch(
 }
 
 .thread-composer-submit {
-  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-0 bg-zinc-900 text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-500;
+  @apply inline-flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-full border-0 bg-zinc-500 text-white transition hover:bg-zinc-600 disabled:cursor-not-allowed disabled:bg-zinc-400 disabled:text-white disabled:opacity-70;
 }
 
 .thread-composer-submit--queue {
@@ -2261,11 +2642,11 @@ watch(
 }
 
 .thread-composer-submit-icon {
-  @apply h-5 w-5;
+  @apply h-4.5 w-4.5;
 }
 
 .thread-composer-stop {
-  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-0 bg-zinc-900 text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-500;
+  @apply inline-flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-full border-0 bg-zinc-500 text-white transition hover:bg-zinc-600 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500;
 }
 
 .thread-composer-stop-icon {
@@ -2274,6 +2655,81 @@ watch(
 
 .thread-composer-stop-spinner {
   @apply h-5 w-5 rounded-full border-2 border-current border-t-transparent animate-spin;
+}
+
+:global(:root.dark) .thread-composer-shell {
+  @apply border-[#3d3d3d] bg-[#2a2a2a] shadow-[0_16px_50px_rgba(0,0,0,0.22)];
+}
+
+:global(:root.dark) .thread-composer-context-ring {
+  background: conic-gradient(var(--context-usage-accent) var(--context-usage-angle), rgb(63 63 70) 0deg);
+}
+
+:global(:root.dark) .thread-composer-context-ring-core {
+  @apply bg-[#2f2f2f];
+}
+
+:global(:root.dark) .thread-composer-input {
+  @apply text-white placeholder:text-[#888];
+}
+
+:global(:root.dark) .thread-composer-expand {
+  @apply bg-[#363636] text-zinc-300 hover:bg-[#444] hover:text-white disabled:text-zinc-500;
+}
+
+:global(:root.dark) .thread-composer-attach-trigger {
+  @apply bg-[#363636] text-zinc-200 hover:bg-[#444] hover:text-white disabled:text-zinc-500;
+}
+
+:global(:root.dark) .thread-composer-access-dropdown.is-request {
+  --thread-composer-access-color: #9a9aa3;
+}
+
+:global(:root.dark) .thread-composer-access-dropdown.is-auto {
+  --thread-composer-access-color: #6eb6ff;
+}
+
+:global(:root.dark) .thread-composer-access-dropdown.is-full {
+  --thread-composer-access-color: #ff7a2f;
+}
+
+:global(:root.dark) .thread-composer-access-dropdown :deep(.composer-dropdown-trigger) {
+  @apply border-transparent bg-transparent hover:bg-transparent disabled:text-zinc-500;
+}
+
+:global(:root.dark) .thread-composer-access-dropdown :deep(.composer-dropdown-menu) {
+  @apply border-[#3f3f46] bg-[#2a2a2a];
+}
+
+:global(:root.dark) .thread-composer-access-dropdown :deep(.composer-dropdown-option) {
+  color: oklch(0.92 0.004 286.32);
+}
+
+:global(:root.dark) .thread-composer-access-dropdown :deep(.composer-dropdown-option:hover),
+:global(:root.dark) .thread-composer-access-dropdown :deep(.composer-dropdown-option.is-selected) {
+  color: var(--thread-composer-access-color);
+  @apply bg-[#3f414a];
+}
+
+:global(:root.dark) .thread-composer-access-dropdown :deep(.composer-dropdown-option:hover .composer-dropdown-option-label),
+:global(:root.dark) .thread-composer-access-dropdown :deep(.composer-dropdown-option.is-selected .composer-dropdown-option-label) {
+  color: var(--thread-composer-access-color);
+}
+
+:global(:root.dark) .thread-composer-config-trigger {
+  @apply border-[#3f3f3f] bg-[#252525] text-zinc-200 hover:bg-[#303030] disabled:text-zinc-500;
+}
+
+:global(:root.dark) .thread-composer-mic {
+  @apply bg-[#363636] text-zinc-300 hover:bg-[#444] hover:text-white disabled:text-zinc-500;
+}
+
+:global(:root.dark) .thread-composer-submit {
+  @apply bg-[#d8d8d8] text-[#111] hover:bg-white disabled:bg-[#d8d8d8] disabled:text-[#111];
+}
+
+:global(:root.dark) .thread-composer-stop {
+  @apply bg-[#d8d8d8] text-[#111] hover:bg-white disabled:bg-[#444] disabled:text-zinc-500;
 }
 
 .thread-composer-hidden-input {

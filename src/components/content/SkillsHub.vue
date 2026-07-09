@@ -8,15 +8,7 @@
     <div class="skills-sync-panel">
       <div class="skills-sync-header">
         <strong>{{ t('Skills Sync (GitHub)') }}</strong>
-        <a
-          v-if="syncStatus.configured && githubRepoUrl"
-          class="skills-sync-badge skills-sync-badge-link"
-          :href="githubRepoUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {{ t('Connected') }}: {{ syncStatus.repoOwner }}/{{ syncStatus.repoName }}
-        </a>
+        <span v-if="syncStatus.configured" class="skills-sync-badge">{{ t('Connected') }}: {{ syncStatus.repoOwner }}/{{ syncStatus.repoName }}</span>
         <span v-else-if="syncStatus.loggedIn" class="skills-sync-badge">{{ t('Logged in as') }} {{ syncStatus.githubUsername }}</span>
         <span v-else class="skills-sync-badge">{{ t('Not connected') }}</span>
       </div>
@@ -58,14 +50,6 @@
           <strong>{{ t('Find skills') }}</strong>
           <span>{{ t('Search the Skills registry with npx skills find.') }}</span>
         </div>
-        <a
-          class="skills-directory-link"
-          href="https://skills.anyclaw.store/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {{ t('Skills directory') }}
-        </a>
       </div>
       <form class="skills-search-form" @submit.prevent="searchSkills">
         <input
@@ -73,7 +57,7 @@
           class="skills-search-input"
           type="search"
           :placeholder="t('Search skills...')"
-          aria-label="Search skills"
+          :aria-label="t('Search skills')"
         />
         <button class="skills-hub-sort" type="submit" :disabled="isSearchingSkills || skillSearchQuery.trim().length < 2">
           {{ isSearchingSkills ? t('Searching...') : t('Search') }}
@@ -194,13 +178,6 @@ const isDetailInstalling = computed(() =>
 const isDetailUninstalling = computed(() =>
   isUninstallActionInFlight.value && actionSkillKey.value === currentDetailSkillKey.value,
 )
-const githubRepoUrl = computed(() => {
-  if (!syncStatus.value.configured) return ''
-  const owner = syncStatus.value.repoOwner.trim()
-  const repo = syncStatus.value.repoName.trim()
-  if (!owner || !repo) return ''
-  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
-})
 const filteredInstalled = computed(() => installedSkills.value)
 
 function showToast(text: string, type: 'success' | 'error' = 'success'): void {
@@ -456,10 +433,6 @@ watch(visibleSkillErrors, (values, oldValues) => {
   @apply text-xs rounded-md border border-zinc-300 bg-white px-2 py-0.5;
 }
 
-.skills-sync-badge-link {
-  @apply text-zinc-700 hover:text-zinc-900 hover:border-zinc-400;
-}
-
 .skills-sync-device {
   @apply text-xs text-zinc-600 flex items-center gap-2 flex-wrap;
 }
@@ -490,10 +463,6 @@ watch(visibleSkillErrors, (values, oldValues) => {
 
 .skills-search-copy span {
   @apply text-xs text-zinc-500;
-}
-
-.skills-directory-link {
-  @apply inline-flex shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-white hover:text-zinc-900;
 }
 
 .skills-search-form {

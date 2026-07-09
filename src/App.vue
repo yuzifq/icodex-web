@@ -11,21 +11,63 @@
             v-if="!isSidebarCollapsed"
             class="sidebar-thread-controls-host"
             :is-sidebar-collapsed="isSidebarCollapsed"
-            :show-new-thread-button="true"
+            :show-new-thread-button="false"
             @toggle-sidebar="setSidebarCollapsed(!isSidebarCollapsed)"
             @start-new-thread="onStartNewThreadFromToolbar"
-          >
+          />
+
+          <nav v-if="!isSidebarCollapsed" class="sidebar-main-nav" :aria-label="t('Primary navigation')">
             <button
-              class="sidebar-search-toggle"
+              class="sidebar-main-nav-item"
+              :class="{ 'is-active': isHomeRoute }"
+              type="button"
+              :aria-label="t('New conversation')"
+              @click="onStartNewThreadFromToolbar"
+            >
+              <span class="sidebar-main-nav-icon" aria-hidden="true">
+                <IconTablerFilePencil />
+              </span>
+              <span class="sidebar-main-nav-label">{{ t('New conversation') }}</span>
+            </button>
+
+            <button
+              class="sidebar-main-nav-item"
+              :class="{ 'is-active': isSidebarSearchVisible }"
               type="button"
               :aria-pressed="isSidebarSearchVisible"
-              :aria-label="t('Search threads')"
-              :title="t('Search threads')"
+              :aria-label="t('Search')"
               @click="toggleSidebarSearch"
             >
-              <IconTablerSearch class="sidebar-search-toggle-icon" />
+              <span class="sidebar-main-nav-icon" aria-hidden="true">
+                <IconTablerSearch />
+              </span>
+              <span class="sidebar-main-nav-label">{{ t('Search') }}</span>
             </button>
-          </SidebarThreadControls>
+
+            <button
+              class="sidebar-main-nav-item"
+              :class="{ 'is-active': isAutomationsRoute }"
+              type="button"
+              @click="router.push({ name: 'automations' }); isMobile && setSidebarCollapsed(true)"
+            >
+              <span class="sidebar-main-nav-icon" aria-hidden="true">
+                <IconTablerBolt />
+              </span>
+              <span class="sidebar-main-nav-label">{{ t('Automations') }}</span>
+            </button>
+
+            <button
+              class="sidebar-main-nav-item"
+              :class="{ 'is-active': isSkillsRoute }"
+              type="button"
+              @click="router.push({ name: 'skills' }); isMobile && setSidebarCollapsed(true)"
+            >
+              <span class="sidebar-main-nav-icon" aria-hidden="true">
+                <IconTablerPuzzle />
+              </span>
+              <span class="sidebar-main-nav-label">{{ t('Plugins') }}</span>
+            </button>
+          </nav>
 
           <div v-if="!isSidebarCollapsed && isSidebarSearchVisible" class="sidebar-search-bar">
             <IconTablerSearch class="sidebar-search-bar-icon" />
@@ -47,38 +89,6 @@
               <IconTablerX class="sidebar-search-clear-icon" />
             </button>
           </div>
-
-          <button
-            v-if="!isSidebarCollapsed"
-            class="sidebar-skills-link"
-            :class="{ 'is-active': isSkillsRoute }"
-            type="button"
-            @click="router.push({ name: 'skills' }); isMobile && setSidebarCollapsed(true)"
-          >
-            <span class="sidebar-skills-link-icon" aria-hidden="true">
-              <IconTablerBolt />
-            </span>
-            <span class="sidebar-skills-link-copy">
-              <span class="sidebar-skills-link-title">{{ t('Skills') }}</span>
-              <span class="sidebar-skills-link-subtitle">{{ t('Plugins, apps, MCPs') }}</span>
-            </span>
-          </button>
-
-          <button
-            v-if="!isSidebarCollapsed"
-            class="sidebar-skills-link"
-            :class="{ 'is-active': isAutomationsRoute }"
-            type="button"
-            @click="router.push({ name: 'automations' }); isMobile && setSidebarCollapsed(true)"
-          >
-            <span class="sidebar-skills-link-icon sidebar-automations-link-icon" aria-hidden="true">
-              <IconTablerBolt />
-            </span>
-            <span class="sidebar-skills-link-copy">
-              <span class="sidebar-skills-link-title">{{ t('Automations') }}</span>
-              <span class="sidebar-skills-link-subtitle">{{ t('Scheduled work') }}</span>
-            </span>
-          </button>
 
           <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
@@ -299,7 +309,7 @@
                       class="sidebar-settings-key-clear"
                       type="button"
                       :disabled="freeModeCustomKeySaving"
-                      :title="t('Remove custom key, use community keys')"
+                      :title="t('Remove OpenRouter key')"
                       @click="clearFreeModeCustomKey"
                     >&#x2715;</button>
                   </template>
@@ -308,7 +318,7 @@
                       v-model="freeModeCustomKey"
                       class="sidebar-settings-key-input"
                       type="password"
-                      :placeholder="t('sk-or-v1-... (optional, uses free keys if empty)')"
+                      :placeholder="t('sk-or-v1-... (required for OpenRouter)')"
                       @keydown.enter="saveFreeModeCustomKey"
                     />
                     <button
@@ -475,18 +485,6 @@
                   </button>
                 </div>
               </div>
-              <div
-                v-if="showThreadContextBadge"
-                class="sidebar-settings-row sidebar-settings-context-row"
-                :data-state="threadContextBadgeState"
-                :title="threadContextTooltip"
-              >
-                <span class="sidebar-settings-label">{{ t('Context') }}</span>
-                <span class="sidebar-settings-context-value" :data-state="threadContextBadgeState">
-                  {{ threadContextPrimaryText }}
-                  <span class="sidebar-settings-context-meta">{{ threadContextSecondaryText }}</span>
-                </span>
-              </div>
               <div class="sidebar-settings-rate-limits">
                 <RateLimitStatus :snapshots="accountRateLimitSnapshots" />
               </div>
@@ -506,6 +504,15 @@
             <span class="sidebar-settings-button-version">
               {{ worktreeName }} · v{{ appVersion }}
             </span>
+          </button>
+          <button
+            class="sidebar-mobile-connect-button"
+            type="button"
+            :aria-label="t('Connect mobile device')"
+            :title="t('Connect mobile device')"
+            @click.stop="onMobileConnectClick"
+          >
+            <IconTablerDeviceMobile class="sidebar-mobile-connect-icon" />
           </button>
         </div>
       </section>
@@ -539,22 +546,9 @@
             </span>
           </template>
           <template #actions>
-            <ComposerDropdown
-              v-if="canShowTerminalToggle"
-              class="content-header-terminal-command"
-              :class="{ 'is-open': isComposerTerminalOpen }"
-              :model-value="terminalHeaderDropdownValue"
-              :options="terminalHeaderDropdownOptions"
-              :placeholder="terminalCommandPlaceholder"
-              :selected-prefix-icon="IconTablerTerminal"
-              :icon-only="true"
-              menu-align="end"
-              :empty-label="t('No commands')"
-              @update:model-value="onSelectHeaderTerminalCommand"
-            />
             <HeaderGitBranchDropdown
               v-if="canShowContentHeaderBranchDropdown"
-              class="content-header-branch-dropdown"
+              class="content-header-branch-dropdown content-header-icon-action"
               :current-branch="currentThreadBranch"
               :head-sha="currentThreadHeadSha"
               :head-subject="currentThreadHeadSubject"
@@ -581,6 +575,17 @@
               @load-commit-files="loadThreadCommitFiles"
               @open-commit-file="onOpenContentHeaderCommitFile"
             />
+            <button
+              v-if="canShowTerminalToggle"
+              class="content-header-terminal-button content-header-icon-button"
+              :class="{ 'is-open': isComposerTerminalOpen }"
+              type="button"
+              :aria-label="terminalCommandPlaceholder"
+              :title="terminalCommandPlaceholder"
+              @click="toggleComposerTerminal"
+            >
+              <IconTablerPanelBottom class="content-header-icon" />
+            </button>
           </template>
         </ContentHeader>
 
@@ -648,12 +653,11 @@
                     </div>
                     <h2 class="new-thread-launch-card-title">{{ t('Plugins are here') }}</h2>
                     <p class="new-thread-launch-card-text">
-                      {{ t('Hook Codex up to Gmail, Calendar, GitHub, Slack, Browser Use, and more so it can actually help with real work right away.') }}
+                      {{ t('Connect Codex to apps and local tools so it can help with real work right away.') }}
                     </p>
                     <div class="new-thread-launch-card-pills" aria-label="Example integrations">
                       <span class="new-thread-launch-card-pill">Gmail</span>
                       <span class="new-thread-launch-card-pill">Calendar</span>
-                      <span class="new-thread-launch-card-pill">GitHub</span>
                       <span class="new-thread-launch-card-pill">Slack</span>
                       <span class="new-thread-launch-card-pill">Browser Use</span>
                     </div>
@@ -931,15 +935,6 @@
                   <span>{{ t(codexCliMissingError) }}</span>
                   <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
                 </div>
-                <ThreadTerminalPanel
-                  v-if="homeTerminalOpen && composerCwd"
-                  ref="homeTerminalPanelRef"
-                  class="content-thread-terminal-panel"
-                  :thread-id="composerThreadContextId"
-                  :cwd="composerCwd"
-                  @hide="onHideHomeTerminal"
-                  @terminal-focus-change="onTerminalFocusChange"
-                />
                 <ThreadComposer ref="homeThreadComposerRef" :active-thread-id="composerThreadContextId"
                   :cwd="composerCwd"
                   :collaboration-modes="availableCollaborationModes"
@@ -961,6 +956,15 @@
                   @update:selected-model="onSelectModel"
                   @update:selected-reasoning-effort="onSelectReasoningEffort"
                   @update:selected-speed-mode="onSelectSpeedMode" />
+                <ThreadTerminalPanel
+                  v-if="homeTerminalOpen && composerCwd"
+                  ref="homeTerminalPanelRef"
+                  class="content-thread-terminal-panel"
+                  :thread-id="composerThreadContextId"
+                  :cwd="composerCwd"
+                  @hide="onHideHomeTerminal"
+                  @terminal-focus-change="onTerminalFocusChange"
+                />
               </div>
             </div>
           </template>
@@ -1003,15 +1007,6 @@
                     @delete="removeQueuedMessage"
                     @reorder="onReorderQueuedMessage"
                   />
-                  <ThreadTerminalPanel
-                    v-if="selectedThreadTerminalOpen && selectedThreadId && composerCwd"
-                    ref="threadTerminalPanelRef"
-                    class="content-thread-terminal-panel"
-                    :thread-id="selectedThreadId"
-                    :cwd="composerCwd"
-                    @hide="onHideSelectedThreadTerminal"
-                    @terminal-focus-change="onTerminalFocusChange"
-                  />
                   <ThreadPendingRequestPanel
                     v-if="selectedThreadPendingRequest"
                     :request="selectedThreadPendingRequest"
@@ -1046,6 +1041,15 @@
                     @update:selected-reasoning-effort="onSelectReasoningEffort"
                     @update:selected-speed-mode="onSelectSpeedMode"
                     @interrupt="onInterruptTurn" />
+                  <ThreadTerminalPanel
+                    v-if="selectedThreadTerminalOpen && selectedThreadId && composerCwd"
+                    ref="threadTerminalPanelRef"
+                    class="content-thread-terminal-panel"
+                    :thread-id="selectedThreadId"
+                    :cwd="composerCwd"
+                    @hide="onHideSelectedThreadTerminal"
+                    @terminal-focus-change="onTerminalFocusChange"
+                  />
                 </div>
               </template>
             </div>
@@ -1181,9 +1185,12 @@ import HeaderGitBranchDropdown from './components/content/HeaderGitBranchDropdow
 import ComposerRuntimeDropdown from './components/content/ComposerRuntimeDropdown.vue'
 import SidebarThreadControls from './components/sidebar/SidebarThreadControls.vue'
 import IconTablerBolt from './components/icons/IconTablerBolt.vue'
+import IconTablerFilePencil from './components/icons/IconTablerFilePencil.vue'
+import IconTablerPuzzle from './components/icons/IconTablerPuzzle.vue'
 import IconTablerSearch from './components/icons/IconTablerSearch.vue'
 import IconTablerSettings from './components/icons/IconTablerSettings.vue'
-import IconTablerTerminal from './components/icons/IconTablerTerminal.vue'
+import IconTablerDeviceMobile from './components/icons/IconTablerDeviceMobile.vue'
+import IconTablerPanelBottom from './components/icons/IconTablerPanelBottom.vue'
 import IconTablerX from './components/icons/IconTablerX.vue'
 import { useDesktopState } from './composables/useDesktopState'
 import { useMobile } from './composables/useMobile'
@@ -1225,9 +1232,10 @@ import {
   searchThreads,
   switchAccount,
 } from './api/codexGateway'
-import type { ReasoningEffort, SpeedMode, UiAccountEntry, UiRateLimitWindow, UiServerRequest, UiServerRequestReply, UiThreadAutomation, UiThreadTokenUsage } from './types/codex'
+import type { ReasoningEffort, SpeedMode, UiAccountEntry, UiRateLimitWindow, UiServerRequest, UiServerRequestReply, UiThreadAutomation } from './types/codex'
 import type { ComposerDraftPayload, ThreadComposerExposed } from './components/content/ThreadComposer.vue'
 import type { GitCommitFileChange, GitCommitOption, LocalDirectoryEntry, TelegramStatus, ThreadTerminalQuickCommand, WorktreeBranchOption } from './api/codexGateway'
+import type { CodexRuntimeConfig } from './runtimeAccess'
 import { getFreeModeStatus, setFreeMode, setFreeModeCustomKey, setCustomProvider } from './api/codexGateway'
 import { getPathLeafName, getPathParent, isProjectlessChatPath, normalizePathForUi } from './pathUtils.js'
 import { copyTextToClipboard } from './utils/clipboard'
@@ -1243,8 +1251,9 @@ const SIDEBAR_COLLAPSED_STORAGE_KEY = 'codex-web-local.sidebar-collapsed.v1'
 const ACCOUNTS_SECTION_COLLAPSED_STORAGE_KEY = 'codex-web-local.accounts-section-collapsed.v1'
 const TERMINAL_QUICK_COMMAND_STORAGE_KEY = 'codex-web-local.terminal-quick-commands.v1'
 const TOGGLE_TERMINAL_COMMAND_VALUE = '__toggle_terminal__'
+const APP_VERSION_FALLBACK = '0.1.87'
 const worktreeName = import.meta.env.VITE_WORKTREE_NAME ?? 'unknown'
-const appVersion = import.meta.env.VITE_APP_VERSION ?? 'unknown'
+const appVersion = import.meta.env.VITE_APP_VERSION ?? APP_VERSION_FALLBACK
 const SETTINGS_HELP = {
   sendWithEnter: t('When enabled, press Enter to send. When disabled, use Command+Enter to send.'),
   inProgressSendMode: t('If a turn is still running, choose whether a new prompt should steer the current turn or be queued.'),
@@ -1722,6 +1731,7 @@ let isAccountStatePollInFlight = false
 let externalCodexAuthAvailable = false
 let externalAuthImportAttempted = false
 let existingFolderBrowseRequestId = 0
+const APP_DISPLAY_NAME = 'iCodex'
 
 const routeThreadId = computed(() => {
   const rawThreadId = route.params.threadId
@@ -1741,13 +1751,9 @@ const contentTitle = computed(() => {
   if (isHomeRoute.value) return t('Start new thread')
   return selectedThread.value?.title ?? t('Choose a thread')
 })
-const browserHostName =
-  typeof window !== 'undefined'
-    ? (window.location.hostname || window.location.host || 'codexui')
-    : 'codexui'
 const pageTitle = computed(() => {
   const threadTitle = selectedThread.value?.title?.trim() ?? ''
-  return threadTitle || browserHostName
+  return threadTitle ? `${threadTitle} - ${APP_DISPLAY_NAME}` : APP_DISPLAY_NAME
 })
 const filteredMessages = computed(() =>
   messages.value.filter((message) => {
@@ -1778,14 +1784,12 @@ const composerCwd = computed(() => {
   return selectedThread.value?.cwd?.trim() ?? ''
 })
 const canShowTerminalToggle = computed(() => (
-  isThreadTerminalAvailable.value && (
-    (isHomeRoute.value && composerCwd.value.length > 0) ||
-    (route.name === 'thread' && selectedThreadId.value.length > 0)
-  )
+  isThreadTerminalAvailable.value &&
+  route.name === 'thread' &&
+  selectedThreadId.value.length > 0
 ))
 const canShowContentHeaderBranchDropdown = computed(() => (
-  (route.name === 'thread' && selectedThreadId.value.length > 0) ||
-  (isHomeRoute.value && isNewThreadCwdGitRepo.value)
+  route.name === 'thread' && selectedThreadId.value.length > 0
 ))
 const isComposerTerminalOpen = computed(() => (
   isHomeRoute.value ? homeTerminalOpen.value : selectedThreadTerminalOpen.value
@@ -1801,41 +1805,12 @@ const isTerminalKeyboardLayoutActive = computed(() => (
 ))
 const directoryCwd = computed(() => selectedThread.value?.cwd?.trim() ?? newThreadCwd.value.trim())
 const isSelectedThreadInProgress = computed(() => !isHomeRoute.value && selectedThread.value?.inProgress === true)
-const showThreadContextBadge = computed(() => !isHomeRoute.value && !isSkillsRoute.value && !isAutomationsRoute.value && selectedThreadId.value.trim().length > 0)
 const isAccountSwitchBlocked = computed(() =>
   isSendingMessage.value ||
   isInterruptingTurn.value ||
   isSelectedThreadInProgress.value ||
   selectedThreadServerRequests.value.length > 0,
 )
-
-function formatCompactTokenCount(value: number): string {
-  if (!Number.isFinite(value)) return '0'
-  return new Intl.NumberFormat('en-US', {
-    notation: value >= 1000 ? 'compact' : 'standard',
-    maximumFractionDigits: value >= 100000 ? 0 : 1,
-  }).format(Math.max(0, Math.trunc(value)))
-}
-
-function buildThreadContextTooltip(usage: UiThreadTokenUsage | null): string {
-  if (!usage) {
-    return t('Waiting for Codex thread/tokenUsage/updated events for this thread.')
-  }
-
-  const lines = [
-    `${t('Current context usage')}: ${usage.currentContextTokens.toLocaleString()} ${t('tokens')}`,
-    `${t('Cumulative thread usage')}: ${usage.total.totalTokens.toLocaleString()} ${t('tokens')}`,
-  ]
-
-  if (typeof usage.modelContextWindow === 'number') {
-    lines.unshift(`${t('Model context window')}: ${usage.modelContextWindow.toLocaleString()} ${t('tokens')}`)
-    lines.push(`${t('Remaining context')}: ${(usage.remainingContextTokens ?? 0).toLocaleString()} ${t('tokens')}`)
-  } else {
-    lines.push(t('Model context window is unavailable in the latest usage event.'))
-  }
-
-  return lines.join('\n')
-}
 
 function dismissFirstLaunchPluginsCard(): void {
   if (!showFirstLaunchPluginsCard.value) return
@@ -1847,34 +1822,6 @@ function onOpenPluginsHomeCard(): void {
   dismissFirstLaunchPluginsCard()
   void router.push({ name: 'skills', query: { tab: 'plugins' } })
 }
-
-const threadContextBadgeState = computed(() => {
-  const remainingPercent = selectedThreadTokenUsage.value?.remainingContextPercent
-  if (remainingPercent === null || typeof remainingPercent !== 'number') return 'pending'
-  if (remainingPercent <= 10) return 'danger'
-  if (remainingPercent <= 25) return 'warning'
-  return 'ok'
-})
-
-const threadContextPrimaryText = computed(() => {
-  const usage = selectedThreadTokenUsage.value
-  if (!usage) return t('Awaiting data')
-  if (typeof usage.remainingContextTokens === 'number') {
-    return `${formatCompactTokenCount(usage.remainingContextTokens)} ${t('left')}`
-  }
-  return `${formatCompactTokenCount(usage.currentContextTokens)} ${t('used')}`
-})
-
-const threadContextSecondaryText = computed(() => {
-  const usage = selectedThreadTokenUsage.value
-  if (!usage) return t('Updates after the next token usage event')
-  if (typeof usage.modelContextWindow === 'number') {
-    return `${formatCompactTokenCount(usage.currentContextTokens)} ${t('used')} / ${formatCompactTokenCount(usage.modelContextWindow)}`
-  }
-  return t('Window size unavailable')
-})
-
-const threadContextTooltip = computed(() => buildThreadContextTooltip(selectedThreadTokenUsage.value))
 
 function hasDuplicateFolderLeaf(path: string, knownPaths: string[]): boolean {
   const normalizedPath = normalizePathForUi(path).trim()
@@ -2535,8 +2482,10 @@ function pickWeeklyQuotaWindow(account: UiAccountEntry) {
 
 function formatResetDateCompact(resetsAt: number | null): string {
   if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
-  const date = new Date(resetsAt * 1000)
-  return `${date.getMonth() + 1}月${date.getDate()}日`
+  return new Intl.DateTimeFormat(uiLanguage.value === 'zh-CN' ? 'zh-CN' : 'en', {
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(resetsAt * 1000))
 }
 
 function formatAccountQuota(account: UiAccountEntry): string {
@@ -3356,6 +3305,10 @@ function onSettingsAreaClick(event: MouseEvent): void {
   isSettingsOpen.value = false
 }
 
+function onMobileConnectClick(): void {
+  // Reserved for the QR connection flow.
+}
+
 function onDocumentVisibilityChange(): void {
   if (typeof document === 'undefined') return
   if (!isMobile.value) return
@@ -3412,7 +3365,7 @@ async function syncAfterMobileResume(): Promise<void> {
   }
 }
 
-function onSubmitThreadMessage(payload: { text: string; imageUrls: string[]; fileAttachments: Array<{ label: string; path: string; fsPath: string }>; skills: Array<{ name: string; path: string }>; mode: 'steer' | 'queue' }): void {
+function onSubmitThreadMessage(payload: { text: string; imageUrls: string[]; fileAttachments: Array<{ label: string; path: string; fsPath: string }>; skills: Array<{ name: string; path: string }>; mode: 'steer' | 'queue'; runtimeConfig: CodexRuntimeConfig }): void {
   const text = payload.text
   scheduleMobileConversationJumpToLatest()
   const editingState = editingQueuedMessageState.value
@@ -3424,10 +3377,10 @@ function onSubmitThreadMessage(payload: { text: string; imageUrls: string[]; fil
       : undefined
   editingQueuedMessageState.value = null
   if (isHomeRoute.value) {
-    void submitFirstMessageForNewThread(text, payload.imageUrls, payload.skills, payload.fileAttachments)
+    void submitFirstMessageForNewThread(text, payload.imageUrls, payload.skills, payload.fileAttachments, payload.runtimeConfig)
     return
   }
-  void sendMessageToSelectedThread(text, payload.imageUrls, payload.skills, payload.mode, payload.fileAttachments, queueInsertIndex)
+  void sendMessageToSelectedThread(text, payload.imageUrls, payload.skills, payload.mode, payload.fileAttachments, queueInsertIndex, undefined, payload.runtimeConfig)
 }
 
 function onEditQueuedMessage(messageId: string): void {
@@ -4874,6 +4827,7 @@ async function submitFirstMessageForNewThread(
   imageUrls: string[] = [],
   skills: Array<{ name: string; path: string }> = [],
   fileAttachments: Array<{ label: string; path: string; fsPath: string }> = [],
+  runtimeConfig?: CodexRuntimeConfig,
 ): Promise<void> {
   try {
     worktreeInitStatus.value = { phase: 'idle', title: '', message: '' }
@@ -4902,7 +4856,7 @@ async function submitFirstMessageForNewThread(
       targetCwd = directory.cwd
       newThreadCwd.value = directory.cwd
     }
-    const threadId = await sendMessageToNewThread(text, targetCwd, imageUrls, skills, fileAttachments)
+    const threadId = await sendMessageToNewThread(text, targetCwd, imageUrls, skills, fileAttachments, runtimeConfig)
     if (!threadId) return
     await router.replace({ name: 'thread', params: { threadId } })
     scheduleMobileConversationJumpToLatest()
@@ -5007,6 +4961,34 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
   @apply mt-1 -translate-y-px px-2 pb-1;
 }
 
+.sidebar-main-nav {
+  @apply mx-2 mt-2 mb-4 flex flex-col gap-1;
+}
+
+.sidebar-main-nav-item {
+  @apply flex h-9 w-full items-center gap-2.5 rounded-md border border-transparent bg-transparent px-2 text-left text-[15px] font-semibold leading-5 text-zinc-700 transition hover:bg-zinc-200 hover:text-zinc-950 focus-visible:outline-none cursor-pointer;
+}
+
+.sidebar-main-nav-item.is-active {
+  @apply bg-zinc-200 text-zinc-950;
+}
+
+.sidebar-main-nav-item.is-active .sidebar-main-nav-icon {
+  @apply text-zinc-900;
+}
+
+.sidebar-main-nav-icon {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center text-zinc-500;
+}
+
+.sidebar-main-nav-icon :deep(svg) {
+  @apply h-4.5 w-4.5;
+}
+
+.sidebar-main-nav-label {
+  @apply min-w-0 truncate;
+}
+
 .sidebar-search-toggle {
   @apply h-6.75 w-6.75 rounded-md border border-transparent bg-transparent text-zinc-600 flex items-center justify-center transition hover:border-zinc-200 hover:bg-zinc-50;
 }
@@ -5095,6 +5077,22 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
   @apply text-zinc-400;
 }
 
+:global(:root.dark) .sidebar-main-nav-item {
+  @apply text-zinc-100 hover:bg-zinc-800 hover:text-white;
+}
+
+:global(:root.dark) .sidebar-main-nav-item.is-active {
+  @apply bg-transparent text-white;
+}
+
+:global(:root.dark) .sidebar-main-nav-icon {
+  @apply text-zinc-300;
+}
+
+:global(:root.dark) .sidebar-main-nav-item.is-active .sidebar-main-nav-icon {
+  @apply text-white;
+}
+
 .content-body {
   @apply flex-1 min-h-0 min-w-0 w-full flex flex-col gap-2 sm:gap-3 pt-1 pb-2 sm:pb-4 overflow-x-hidden;
 }
@@ -5143,7 +5141,7 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 .composer-with-queue {
-  @apply w-full shrink-0 px-2 sm:px-6 flex flex-col gap-2;
+  @apply w-full shrink-0 px-4 sm:px-6 flex flex-col gap-2;
 }
 
 .composer-runtime-error {
@@ -5159,72 +5157,54 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 .content-thread-terminal-panel {
-  @apply w-full;
+  width: calc(100% + 2rem);
+  max-width: none;
+  min-width: 0;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  align-self: stretch;
 }
 
-.content-header-terminal-command {
-  @apply max-w-48;
+@media (min-width: 640px) {
+  .content-thread-terminal-panel {
+    width: calc(100% + 3rem);
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+  }
 }
 
-.content-header-terminal-command :deep(.composer-dropdown-trigger) {
-  @apply h-8 rounded-full border border-zinc-200 bg-white px-3 text-xs text-zinc-700 outline-none transition hover:bg-zinc-50 focus:border-zinc-300;
+.content-header-icon-button,
+.content-header-icon-action :deep(.header-git-trigger) {
+  @apply relative inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white p-0 text-zinc-950 shadow-sm outline-none transition hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
-.content-header-terminal-command :deep(.composer-dropdown-prefix-icon) {
-  @apply h-4 w-4 text-zinc-500;
+.content-header-icon-button.is-open,
+.content-header-icon-action.is-review-open :deep(.header-git-trigger) {
+  @apply bg-zinc-100 text-zinc-950;
 }
 
-.content-header-terminal-command.is-open :deep(.composer-dropdown-trigger) {
-  @apply border-zinc-300 bg-zinc-100 text-zinc-950;
+.content-header-icon,
+.content-header-icon-action :deep(.header-git-trigger-icon) {
+  @apply h-5 w-5 shrink-0;
 }
 
-.content-header-terminal-command :deep(.composer-dropdown-menu-wrap) {
-  left: auto;
-  right: 0;
+.content-header-icon-action :deep(.header-git-trigger-label),
+.content-header-icon-action :deep(.header-git-trigger-chevron) {
+  @apply hidden;
 }
 
-.content-header-terminal-command :deep(.composer-dropdown-menu) {
-  width: min(18rem, calc(100vw - 1rem));
-  min-width: min(14rem, calc(100vw - 1rem));
+.content-header-icon-action :deep(.header-git-dirty-dot) {
+  @apply absolute right-1 top-1;
 }
 
-.content-header-terminal-command :deep(.composer-dropdown-option) {
-  @apply block truncate;
+:global(:root.dark) .content-header-icon-button,
+:global(:root.dark) .content-header-icon-action :deep(.header-git-trigger) {
+  @apply border-0 bg-[#2b2b2b] text-zinc-100 shadow-none hover:bg-[#3a3a3a] focus-visible:ring-zinc-500;
 }
 
-.content-header-terminal-command :deep(.composer-dropdown-trigger) {
-  @apply rounded-full border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 transition hover:bg-zinc-50;
-}
-
-.content-header-terminal-command :deep(.composer-dropdown-prefix-icon),
-.content-header-branch-dropdown :deep(.composer-dropdown-prefix-icon) {
-  @apply h-4 w-4 text-zinc-600;
-}
-
-.content-header-terminal-command :deep(.composer-dropdown-trigger),
-.content-header-branch-dropdown :deep(.composer-dropdown-trigger) {
-  @apply gap-0.5;
-}
-
-.content-header-branch-dropdown :deep(.composer-dropdown-trigger) {
-  @apply rounded-full border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 transition hover:bg-zinc-50;
-}
-
-.content-header-branch-dropdown :deep(.composer-dropdown-value) {
-  @apply max-w-40 truncate;
-}
-
-.content-header-branch-dropdown :deep(.composer-dropdown-menu-wrap) {
-  left: auto;
-  right: 0;
-}
-
-.content-header-branch-dropdown.is-review-open :deep(.composer-dropdown-trigger) {
-  @apply border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800;
-}
-
-.content-header-branch-dropdown.is-review-open :deep(.composer-dropdown-chevron) {
-  @apply text-white;
+:global(:root.dark) .content-header-icon-button.is-open,
+:global(:root.dark) .content-header-icon-action.is-review-open :deep(.header-git-trigger) {
+  @apply bg-[#3b3b3b] text-white;
 }
 
 .new-thread-empty {
@@ -5578,18 +5558,31 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 
 .sidebar-settings-area {
   @apply shrink-0 bg-slate-100 pt-2 px-2 pb-2 border-t border-zinc-200;
+  position: relative;
 }
 
 .sidebar-settings-button {
-  @apply flex items-center gap-2 w-full rounded-lg border-0 bg-transparent px-2 py-2 text-sm text-zinc-600 transition hover:bg-zinc-200 hover:text-zinc-900 cursor-pointer;
+  @apply flex items-center gap-2 w-full rounded-lg border-0 bg-transparent py-2 pl-2 pr-12 text-sm text-zinc-600 transition hover:bg-zinc-200 hover:text-zinc-900 cursor-pointer;
 }
 
 .sidebar-settings-button-version {
-  @apply ml-auto min-w-0 truncate text-right text-xs;
+  @apply hidden;
+}
+
+.sidebar-mobile-connect-button {
+  @apply absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent bg-transparent text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-900 focus:outline-none focus:ring-0;
+}
+
+.sidebar-mobile-connect-icon {
+  @apply h-4.5 w-4.5;
 }
 
 .sidebar-settings-icon {
   @apply w-4.5 h-4.5;
+}
+
+:global(:root.dark) .sidebar-mobile-connect-button {
+  @apply border-transparent bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus:ring-0;
 }
 
 .sidebar-settings-panel {
@@ -6085,30 +6078,6 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 
 :root.dark .project-zip-progress-fill {
   @apply bg-emerald-500;
-}
-
-.sidebar-settings-context-row {
-  @apply cursor-default;
-}
-
-.sidebar-settings-context-value {
-  @apply text-xs font-semibold text-zinc-700 text-right;
-}
-
-.sidebar-settings-context-value[data-state='ok'] {
-  @apply text-emerald-700;
-}
-
-.sidebar-settings-context-value[data-state='warning'] {
-  @apply text-amber-700;
-}
-
-.sidebar-settings-context-value[data-state='danger'] {
-  @apply text-rose-700;
-}
-
-.sidebar-settings-context-meta {
-  @apply block text-[11px] font-normal text-zinc-500;
 }
 
 .sidebar-settings-rate-limits {

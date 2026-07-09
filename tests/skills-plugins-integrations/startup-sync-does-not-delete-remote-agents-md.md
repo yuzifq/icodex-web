@@ -1,7 +1,7 @@
 ### Feature: Startup sync does not delete remote AGENTS.md
 
 #### Prerequisites
-- Skills sync configured to `friuns2/codexskills`.
+- Skills sync is configured to a private skills sync repository.
 - Remote `main` contains `AGENTS.md`.
 - Local skills repo is clean before startup sync.
 

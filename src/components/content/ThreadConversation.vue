@@ -1,12 +1,12 @@
 <template>
   <section class="conversation-root" @contextmenu.capture="onConversationContextMenu">
-    <p v-if="isLoading" class="conversation-loading">Loading messages...</p>
+    <p v-if="isLoading" class="conversation-loading">{{ t('Loading messages...') }}</p>
 
     <p
       v-else-if="messages.length === 0 && pendingRequests.length === 0 && !liveOverlay"
       class="conversation-empty"
     >
-      No messages in this thread yet.
+      {{ t('No messages in this thread yet.') }}
     </p>
 
     <ul v-else ref="conversationListRef" class="conversation-list" @scroll="onConversationScroll">
@@ -17,7 +17,7 @@
           :disabled="isLoadingMore || isLoadingPersistedAbove"
           @click="loadMoreAbove"
         >
-          {{ isLoadingMore || isLoadingPersistedAbove ? 'Loading…' : 'Load earlier messages' }}
+          {{ isLoadingMore || isLoadingPersistedAbove ? t('Loading…') : t('Load earlier messages') }}
         </button>
       </li>
       <template v-for="message in visibleMessages" :key="message.id">
@@ -922,6 +922,7 @@ import type { UiFileChange, UiLiveOverlay, UiMessage, UiPlanStep, UiServerReques
 import { updateThreadFileChanges } from '../../api/codexGateway'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { useMobile } from '../../composables/useMobile'
+import { useUiLanguage } from '../../composables/useUiLanguage'
 import { copyTextToClipboard, copyTextWithSelectionFallback } from '../../utils/clipboard'
 
 import IconTablerArrowBackUp from '../icons/IconTablerArrowBackUp.vue'
@@ -948,6 +949,7 @@ const fileLinkContextMenuY = ref(0)
 const fileLinkContextBrowseUrl = ref('')
 const fileLinkContextEditUrl = ref('')
 const { isMobile } = useMobile()
+const { t } = useUiLanguage()
 const { buildFeedbackMailto, feedbackMailtoBase, recordVisibleFailure } = useFeedbackDiagnostics()
 const feedbackMailto = feedbackMailtoBase()
 
@@ -4498,7 +4500,7 @@ onBeforeUnmount(() => {
 }
 
 .conversation-list {
-  @apply h-full min-h-0 list-none m-0 px-2 sm:px-6 py-0 overflow-y-auto overflow-x-visible flex flex-col gap-2 sm:gap-3;
+  @apply h-full min-h-0 list-none m-0 px-4 sm:px-6 py-0 overflow-y-auto overflow-x-visible flex flex-col gap-2 sm:gap-3;
 }
 
 .conversation-load-more {

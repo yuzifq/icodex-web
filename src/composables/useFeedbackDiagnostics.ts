@@ -6,6 +6,7 @@ const MAX_BODY_CHARS = 6500
 const MAX_PAGE_TEXT_CHARS = 1800
 const MAX_STORAGE_ITEMS = 12
 const MAX_STORAGE_VALUE_CHARS = 240
+const APP_VERSION_FALLBACK = '0.1.87'
 const SENSITIVE_STORAGE_PATTERN = /token|secret|password|passwd|credential|authorization|auth|bearer|cookie|session|key/i
 
 export type FeedbackDiagnosticKind = 'window-error' | 'unhandled-rejection' | 'fetch-error' | 'api-response' | 'visible-error'
@@ -150,7 +151,7 @@ export function buildFeedbackMailto(entries: FeedbackDiagnostic[] = diagnostics.
     : `${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio || 1}x`
   const currentUrl = typeof window === 'undefined' ? 'unknown' : window.location.href
   const userAgent = typeof navigator === 'undefined' ? 'unknown' : navigator.userAgent
-  const appVersion = import.meta.env.VITE_APP_VERSION || 'unknown'
+  const appVersion = import.meta.env.VITE_APP_VERSION || APP_VERSION_FALLBACK
   const worktreeName = import.meta.env.VITE_WORKTREE_NAME || 'unknown'
   const recentDiagnostics = entries.slice(0, 12).map((entry, index) => {
     const parts = [
@@ -184,7 +185,7 @@ export function buildFeedbackMailto(entries: FeedbackDiagnostic[] = diagnostics.
     readVisiblePageText(),
   ].join('\n').slice(0, MAX_BODY_CHARS)
 
-  const subject = `Codex Web feedback: ${normalizeSubjectMessage(entries[0]?.message)}`
+  const subject = `iCodex feedback: ${normalizeSubjectMessage(entries[0]?.message)}`
   return `mailto:${FEEDBACK_EMAIL}?subject=${encodeMailtoParam(subject)}&body=${encodeMailtoParam(body)}`
 }
 

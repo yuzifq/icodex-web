@@ -11,7 +11,7 @@
 5. Open the Provider dropdown and verify it renders as the app custom menu, not a native browser `<select>` control.
 6. Change provider to **OpenRouter**.
 7. Verify a "Get API key" link appears next to the OpenRouter API key label, pointing to `https://openrouter.ai/keys`.
-8. Verify the API key input field is shown with placeholder `sk-or-v1-... (optional, uses free keys if empty)`.
+8. Verify the API key input field is shown with placeholder `sk-or-v1-... (required for OpenRouter)`.
 9. Optionally enter an OpenRouter API key and click Set.
 10. Change provider to **Custom endpoint**.
 11. Verify URL and API key input fields appear.
@@ -23,7 +23,7 @@
 #### Expected Results
 - Provider dropdown shows Codex, OpenRouter, OpenCode Zen, and Custom endpoint.
 - Provider dropdown uses the shared custom dropdown/menu component with consistent styling and dark-theme behavior.
-- Selecting OpenRouter enables free mode with community keys (or custom key if provided).
+- Selecting OpenRouter enables OpenRouter mode only after a user-provided key is saved.
 - Selecting Custom endpoint allows setting a custom API base URL and bearer token.
 - Selecting Codex disables external provider mode and uses the default Codex backend.
 - Settings panel scrolls as a whole; accounts section has no independent scrollbar.

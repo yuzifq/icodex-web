@@ -11,10 +11,10 @@
 
 #### Expected Results
 - CLI does not run `codex login` on startup.
-- A friendly message is shown: "You can log in later via settings or run `codexui login`."
+- A friendly message is shown: "You can log in later via settings or run `icodex login`."
 - The app is fully usable without a Codex account when using OpenRouter or custom providers.
 
 #### Rollback/Cleanup
-- Run `codexui login` to restore Codex authentication if needed.
+- Run `icodex login` to restore Codex authentication if needed.
 
 ---

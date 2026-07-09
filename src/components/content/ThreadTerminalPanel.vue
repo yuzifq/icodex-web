@@ -16,8 +16,8 @@
         </button>
       </div>
       <div class="thread-terminal-actions">
-        <button class="thread-terminal-action" type="button" title="New" @click="onNewTerminal">
-          New
+        <button class="thread-terminal-action" type="button" :title="t('New terminal')" @click="onNewTerminal">
+          {{ t('New') }}
         </button>
         <button class="thread-terminal-action" type="button" :title="t('Hide terminal')" @click="$emit('hide')">
           {{ t('Hide') }}

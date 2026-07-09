@@ -1,7 +1,7 @@
 ### Feature: Bidirectional AGENTS.md sync via Startup Sync
 
 #### Prerequisites
-- Skills sync configured to `friuns2/codexskills`.
+- Skills sync is configured to a private skills sync repository.
 - `~/.codex/skills` is a clean git working tree before each sub-test.
 - Skills Hub startup sync endpoint is reachable.
 

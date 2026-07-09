@@ -43,6 +43,11 @@ import { handleCustomEndpointProxyRequest } from './customEndpointProxy.js'
 import { ThreadTerminalManager } from './terminalManager.js'
 import { getSpawnInvocation } from '../utils/commandInvocation.js'
 import {
+  normalizeCodexRuntimeConfig,
+  turnStartRuntimeParams,
+  type CodexRuntimeConfig,
+} from '../runtimeAccess.js'
+import {
   resolveCodexCommand,
   resolveRipgrepCommand,
 } from '../commandResolution.js'
@@ -5532,6 +5537,7 @@ type StoredQueuedMessage = {
   skills: Array<{ name: string; path: string }>
   fileAttachments: Array<{ label: string; path: string; fsPath: string }>
   collaborationMode: 'default' | 'plan'
+  runtimeConfig?: CodexRuntimeConfig
 }
 
 type ThreadQueueState = Record<string, StoredQueuedMessage[]>
@@ -5588,6 +5594,7 @@ function normalizeStoredQueuedMessage(value: unknown): StoredQueuedMessage | nul
     skills: normalizeNamedPathItems(record.skills),
     fileAttachments: normalizeFileAttachments(record.fileAttachments),
     collaborationMode: record.collaborationMode === 'plan' ? 'plan' : 'default',
+    runtimeConfig: normalizeCodexRuntimeConfig(record.runtimeConfig) ?? undefined,
   }
 }
 
@@ -5726,6 +5733,7 @@ ${escapeHeartbeatXmlText(automation.prompt)}
     skills: [],
     fileAttachments: [],
     collaborationMode: 'default',
+    runtimeConfig: undefined,
   }
 }
 
@@ -6393,7 +6401,7 @@ class AppServerProcess {
   private getCodexCommand(): string {
     const codexCommand = resolveCodexCommand()
     if (!codexCommand) {
-      throw new Error('Codex CLI is not available. Install @openai/codex or set CODEXUI_CODEX_COMMAND.')
+      throw new Error('Codex CLI is not available. Install the official OpenAI Codex CLI from https://developers.openai.com/codex/cli or set CODEXUI_CODEX_COMMAND.')
     }
     return codexCommand
   }
@@ -7174,6 +7182,9 @@ export class BackendQueueProcessor {
     if (dedupedFileAttachments.length > 0) {
       params.attachments = dedupedFileAttachments.map((f) => ({ label: f.label, path: f.path, fsPath: f.fsPath }))
     }
+    if (turn.message.runtimeConfig) {
+      Object.assign(params, turnStartRuntimeParams(turn.message.runtimeConfig))
+    }
 
     try {
       const settings = await this.resolveCollaborationModeSettings(turn.message.collaborationMode)
@@ -7206,7 +7217,7 @@ class MethodCatalog {
     await new Promise<void>((resolve, reject) => {
       const codexCommand = resolveCodexCommand()
       if (!codexCommand) {
-        reject(new Error('Codex CLI is not available. Install @openai/codex or set CODEXUI_CODEX_COMMAND.'))
+        reject(new Error('Codex CLI is not available. Install the official OpenAI Codex CLI from https://developers.openai.com/codex/cli or set CODEXUI_CODEX_COMMAND.'))
         return
       }
 

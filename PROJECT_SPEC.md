@@ -2,11 +2,10 @@
 
 ## Overview
 
-**codex-web-local** is a lightweight, browser-based web UI for [OpenAI Codex](https://github.com/openai/codex). It mirrors the Codex Desktop experience and runs on top of the Codex `app-server`, allowing remote access to a local Codex instance from any browser.
+**codex-web-local** is a lightweight, browser-based web UI for OpenAI Codex. It mirrors the Codex Desktop experience and runs on top of the Codex `app-server`, allowing remote access to a local Codex instance from any browser.
 
 - **Author:** Pavel Voronin
 - **License:** MIT
-- **Repository:** https://github.com/pavel-voronin/codex-web-local
 
 ## Architecture
 

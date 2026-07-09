@@ -11,7 +11,7 @@
 3. Open `Skills Hub`.
 4. Trigger `Pull` from the `Skills Sync (GitHub)` panel.
 5. Wait for the pull success toast.
-6. Inspect `~/.codex/skills/shared_skills` and compare it with the public `OpenClawAndroid/skills` `android` branch.
+6. Inspect `~/.codex/skills/shared_skills` and compare it with the public `ComposioHQ/awesome-codex-skills` `master` branch.
 7. Inspect `~/.codex/skills` and verify unrelated parent-level files were not reset or cleaned by the unauthenticated pull.
 8. If `~/.codex/skills/shared_skills/.git` is a git file or worktree/submodule-style pointer, repeat the pull and verify the nested repo is not reinitialized.
 9. Inspect the `/codex-api/skills-sync/pull` response and verify `data.synced` matches the number of direct shared skill folders with `SKILL.md`.
@@ -19,7 +19,7 @@
 11. Switch to dark theme and verify the same Skills Hub state remains readable and current.
 
 #### Expected Results
-- Public unauthenticated pull resets only the nested `shared_skills` repo to the public upstream `android` branch.
+- Public unauthenticated pull resets only the nested `shared_skills` repo to the public upstream `master` branch.
 - Local uncommitted edits and local-only untracked skill folders inside `shared_skills` are removed by the pull.
 - Parent-level `~/.codex/skills` files outside `shared_skills` are not reset or cleaned.
 - Existing git-file/worktree/submodule-style shared skills repos are reused, not reinitialized.

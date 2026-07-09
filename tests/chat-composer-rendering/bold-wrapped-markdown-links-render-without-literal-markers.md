@@ -10,8 +10,8 @@ Bold-wrapped Markdown link marker cleanup in chat messages.
 
 #### Steps
 1. In light theme, open `TestChat`.
-2. Send or inspect a message containing a bold-wrapped Markdown link, for example `**https://anyclaw.store/claim/a7m2z7**` or `**[claim link](https://anyclaw.store/claim/a7m2z7)**`.
-3. Repeat with triple-asterisk wrapping: `***https://anyclaw.store/claim/a7m2z7***` and `***[claim link](https://anyclaw.store/claim/a7m2z7)***`.
+2. Send or inspect a message containing a bold-wrapped Markdown link, for example `**https://example.com/claim/a7m2z7**` or `**[claim link](https://example.com/claim/a7m2z7)**`.
+3. Repeat with triple-asterisk wrapping: `***https://example.com/claim/a7m2z7***` and `***[claim link](https://example.com/claim/a7m2z7)***`.
 4. Confirm the rendered row contains one clickable `a.message-file-link` for the URL.
 5. Confirm no literal `**`, `***`, or stray `*` characters appear before or after the link.
 6. Switch to dark theme and repeat steps 2 through 5.

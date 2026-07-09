@@ -546,11 +546,11 @@ type GithubTokenResponse = { access_token?: string; error?: string }
 const GITHUB_DEVICE_CLIENT_ID = 'Iv1.b507a08c87ecfe98'
 const DEFAULT_SKILLS_SYNC_REPO_NAME = 'codexskills'
 const SKILLS_SYNC_MANIFEST_PATH = 'installed-skills.json'
-const SYNC_UPSTREAM_SKILLS_OWNER = 'OpenClawAndroid'
-const SYNC_UPSTREAM_SKILLS_REPO = 'skills'
+const SYNC_UPSTREAM_SKILLS_OWNER = 'ComposioHQ'
+const SYNC_UPSTREAM_SKILLS_REPO = 'awesome-codex-skills'
 const PRIVATE_SYNC_BRANCH = 'main'
-const PUBLIC_UPSTREAM_BRANCH_ANDROID = 'android'
-const PUBLIC_UPSTREAM_BRANCH_DEFAULT = 'main'
+const PUBLIC_UPSTREAM_BRANCH_ANDROID = 'master'
+const PUBLIC_UPSTREAM_BRANCH_DEFAULT = 'master'
 let startupSkillsSyncInitialized = false
 
 type StartupSyncStatus = {

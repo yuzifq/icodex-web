@@ -17,7 +17,7 @@ OpenRouter community-key classification and stalled thread-resume recovery.
 6. Repeat the visible provider switch and thread-open checks in dark theme and confirm errors, composer controls, and model labels remain readable.
 
 #### Expected Results
-- Blank OpenRouter provider saves do not turn remembered community keys into `customKey: true`.
+- Blank OpenRouter provider saves do not turn remembered user keys into `customKey: true`.
 - Explicit user OpenRouter keys and previously custom OpenRouter state remain custom.
 - A never-settling `resumeThread()` request cannot permanently block future resume attempts for the same thread.
 - Light and dark themes both show readable provider, model, and error/retry surfaces.

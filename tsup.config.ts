@@ -8,7 +8,12 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   banner: {
-    js: '#!/usr/bin/env node',
+    js: [
+      '#!/usr/bin/env node',
+      'import { createRequire as __codexCreateRequire } from "node:module";',
+      'const require = __codexCreateRequire(import.meta.url);',
+    ].join('\n'),
   },
-  external: ['express', 'commander'],
+  noExternal: ['commander', 'express', 'ws'],
+  external: ['node-pty', 'node-pty-prebuilt-multiarch', 'qrcode-terminal'],
 })

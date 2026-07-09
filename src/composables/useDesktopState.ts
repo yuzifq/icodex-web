@@ -59,6 +59,7 @@ import type {
   UiTokenUsageBreakdown,
   UiThread,
 } from '../types/codex'
+import type { CodexRuntimeConfig } from '../runtimeAccess'
 import { getPathParent, isProjectlessChatPath, normalizePathForUi, toProjectName } from '../pathUtils.js'
 
 function flattenThreads(groups: UiProjectGroup[]): UiThread[] {
@@ -95,7 +96,7 @@ const REASONING_EFFORT_OPTIONS: ReasoningEffort[] = ['none', 'minimal', 'low', '
 const GLOBAL_SERVER_REQUEST_SCOPE = '__global__'
 const MODEL_FALLBACK_ID = 'gpt-5.4-mini'
 const OPENCODE_ZEN_DEFAULT_MODEL = 'big-pickle'
-const CODEX_CLI_MISSING_MESSAGE = 'Codex CLI not found. Install @openai/codex or set CODEXUI_CODEX_COMMAND.'
+const CODEX_CLI_MISSING_MESSAGE = 'Codex CLI not found. Install the official OpenAI Codex CLI from https://developers.openai.com/codex/cli or set CODEXUI_CODEX_COMMAND.'
 type SelectThreadResult = 'ok' | 'not-found' | 'error'
 
 function isCodexCliMissingError(error: unknown): boolean {
@@ -1408,6 +1409,7 @@ export function useDesktopState() {
     skills: Array<{ name: string; path: string }>
     fileAttachments: FileAttachment[]
     collaborationMode: CollaborationModeKind
+    runtimeConfig?: CodexRuntimeConfig
   }
   type PendingTurnRequest = {
     text: string
@@ -1416,6 +1418,7 @@ export function useDesktopState() {
     fileAttachments: FileAttachment[]
     effort: ReasoningEffort | ''
     collaborationMode: CollaborationModeKind
+    runtimeConfig?: CodexRuntimeConfig
     fallbackRetried: boolean
   }
   const queuedMessagesByThreadId = ref<Record<string, QueuedMessage[]>>({})
@@ -1909,6 +1912,7 @@ export function useDesktopState() {
         pending.skills.length > 0 ? pending.skills : undefined,
         pending.fileAttachments,
         pending.collaborationMode,
+        pending.runtimeConfig,
       )
 
       scheduleRateLimitRefresh()
@@ -4192,6 +4196,7 @@ export function useDesktopState() {
           fsPath: attachment.fsPath,
         })),
         collaborationMode: message.collaborationMode,
+        runtimeConfig: message.runtimeConfig,
       }))
     }
     return next
@@ -4845,6 +4850,7 @@ export function useDesktopState() {
     fileAttachments: FileAttachment[] = [],
     queueInsertIndex?: number,
     collaborationModeOverride?: CollaborationModeKind,
+    runtimeConfig?: CodexRuntimeConfig,
   ): Promise<void> {
     if (isUpdatingSpeedMode.value) return
 
@@ -4876,6 +4882,7 @@ export function useDesktopState() {
           : collaborationModeOverride === 'default'
             ? 'default'
             : selectedCollaborationMode.value,
+        runtimeConfig,
       })
       queuedMessagesByThreadId.value = {
         ...queuedMessagesByThreadId.value,
@@ -4894,6 +4901,7 @@ export function useDesktopState() {
         skills,
         fileAttachments,
         collaborationModeOverride,
+        runtimeConfig,
       ).catch((unknownError) => {
         const errorMessage = unknownError instanceof Error ? unknownError.message : 'Unknown application error'
         setTurnErrorForThread(threadId, errorMessage)
@@ -4931,6 +4939,7 @@ export function useDesktopState() {
         skills,
         fileAttachments,
         collaborationModeOverride,
+        runtimeConfig,
       )
     } catch (unknownError) {
       shouldAutoScrollOnNextAgentEvent = false
@@ -4949,6 +4958,7 @@ export function useDesktopState() {
     imageUrls: string[] = [],
     skills: Array<{ name: string; path: string }> = [],
     fileAttachments: FileAttachment[] = [],
+    runtimeConfig?: CodexRuntimeConfig,
   ): Promise<string> {
     if (isUpdatingSpeedMode.value) return ''
 
@@ -4964,7 +4974,7 @@ export function useDesktopState() {
 
     try {
       try {
-        const startedThread = await startThread(targetCwd || undefined, selectedModel || undefined)
+        const startedThread = await startThread(targetCwd || undefined, selectedModel || undefined, runtimeConfig)
         threadId = startedThread.threadId
         setThreadModelId(threadId, startedThread.model)
         setThreadModelProviderId(threadId, startedThread.modelProvider || activeProviderId.value)
@@ -4972,7 +4982,7 @@ export function useDesktopState() {
       } catch (unknownError) {
         if (selectedModel && selectedModel !== MODEL_FALLBACK_ID && isUnsupportedChatGptModelError(unknownError)) {
           await applyFallbackModelSelection()
-          const fallbackThread = await startThread(targetCwd || undefined, MODEL_FALLBACK_ID)
+          const fallbackThread = await startThread(targetCwd || undefined, MODEL_FALLBACK_ID, runtimeConfig)
           threadId = fallbackThread.threadId
           setThreadModelId(threadId, fallbackThread.model)
           setThreadModelProviderId(threadId, fallbackThread.modelProvider || activeProviderId.value)
@@ -5009,7 +5019,7 @@ export function useDesktopState() {
       const capturedThreadId = threadId
       const capturedCwd = targetCwd || null
       const capturedPrompt = nextText
-      void startTurnForThread(threadId, nextText, imageUrls, skills, fileAttachments, selectedMode)
+      void startTurnForThread(threadId, nextText, imageUrls, skills, fileAttachments, selectedMode, runtimeConfig)
         .catch((unknownError) => {
           shouldAutoScrollOnNextAgentEvent = false
           setThreadInProgress(threadId, false)
@@ -5046,6 +5056,7 @@ export function useDesktopState() {
     skills: Array<{ name: string; path: string }> = [],
     fileAttachments: FileAttachment[] = [],
     collaborationModeOverride?: CollaborationModeKind,
+    runtimeConfig?: CodexRuntimeConfig,
   ): Promise<void> {
     const reasoningEffort = selectedReasoningEffort.value
     const collaborationMode = collaborationModeOverride === 'plan' ? 'plan' : collaborationModeOverride === 'default'
@@ -5072,6 +5083,7 @@ export function useDesktopState() {
       fileAttachments: normalizedFileAttachments,
       effort: reasoningEffort,
       collaborationMode,
+      runtimeConfig,
       fallbackRetried: false,
     })
 
@@ -5102,6 +5114,7 @@ export function useDesktopState() {
           skills.length > 0 ? skills : undefined,
           fileAttachments,
           collaborationMode,
+          runtimeConfig,
         )
       } catch (unknownError) {
         if (modelId && modelId !== MODEL_FALLBACK_ID && isUnsupportedChatGptModelError(unknownError)) {
@@ -5113,6 +5126,7 @@ export function useDesktopState() {
             fileAttachments: normalizedFileAttachments,
             effort: reasoningEffort,
             collaborationMode,
+            runtimeConfig,
             fallbackRetried: true,
           })
           startedTurnId = await startThreadTurn(
@@ -5124,6 +5138,7 @@ export function useDesktopState() {
             skills.length > 0 ? skills : undefined,
             fileAttachments,
             collaborationMode,
+            runtimeConfig,
           )
         } else {
           throw unknownError
@@ -5654,7 +5669,7 @@ export function useDesktopState() {
     if (!msg) return
     removeQueuedMessage(messageId)
     setSelectedCollaborationMode(msg.collaborationMode)
-    void sendMessageToSelectedThread(msg.text, msg.imageUrls, msg.skills, 'steer', msg.fileAttachments)
+    void sendMessageToSelectedThread(msg.text, msg.imageUrls, msg.skills, 'steer', msg.fileAttachments, undefined, msg.collaborationMode, msg.runtimeConfig)
   }
 
   function primeSelectedThread(threadId: string, options: { persist?: boolean } = {}): void {

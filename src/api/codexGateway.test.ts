@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getAvailableModelIds, getThreadDetail, listDirectoryComposioConnectors, resumeThread, startThreadTurn } from './codexGateway'
+import { getAvailableModelIds, getThreadDetail, listDirectoryComposioConnectors, resumeThread, startThread, startThreadTurn } from './codexGateway'
+import { runtimeConfigForAccessMode } from '../runtimeAccess'
 
 function mockRpcFetch(): { requests: Array<{ method: string, params: Record<string, unknown> }> } {
   const requests: Array<{ method: string, params: Record<string, unknown> }> = []
@@ -12,7 +13,13 @@ function mockRpcFetch(): { requests: Array<{ method: string, params: Record<stri
     requests.push(body)
 
     return new Response(JSON.stringify({
-      result: {
+      result: body.method === 'thread/start' ? {
+        thread: {
+          id: `thread-${requests.length}`,
+          model: 'gpt-5.4',
+          modelProvider: 'openai',
+        },
+      } : {
         turn: {
           id: `turn-${requests.length}`,
         },
@@ -57,6 +64,65 @@ describe('startThreadTurn collaboration mode payloads', () => {
         reasoning_effort: 'medium',
         developer_instructions: null,
       },
+    })
+  })
+
+  it.each([
+    [
+      'request',
+      'workspace-write',
+      'on-request',
+      {
+        type: 'workspaceWrite',
+        writableRoots: [],
+        networkAccess: false,
+        excludeTmpdirEnvVar: false,
+        excludeSlashTmp: false,
+      },
+    ],
+    [
+      'auto',
+      'workspace-write',
+      'on-failure',
+      {
+        type: 'workspaceWrite',
+        writableRoots: [],
+        networkAccess: true,
+        excludeTmpdirEnvVar: false,
+        excludeSlashTmp: false,
+      },
+    ],
+    [
+      'full',
+      'danger-full-access',
+      'never',
+      { type: 'dangerFullAccess' },
+    ],
+  ] as const)('sends %s access mode runtime config to thread and turn starts', async (
+    accessMode,
+    expectedSandbox,
+    expectedApprovalPolicy,
+    expectedSandboxPolicy,
+  ) => {
+    const { requests } = mockRpcFetch()
+    const runtimeConfig = runtimeConfigForAccessMode(accessMode)
+
+    await startThread('/tmp/project', 'gpt-5.4', runtimeConfig)
+    await startThreadTurn('thread-1', `use ${accessMode} access`, [], 'gpt-5.4', 'medium', undefined, [], 'default', runtimeConfig)
+
+    expect(requests).toHaveLength(2)
+    expect(requests[0].method).toBe('thread/start')
+    expect(requests[0].params).toMatchObject({
+      cwd: '/tmp/project',
+      model: 'gpt-5.4',
+      approvalPolicy: expectedApprovalPolicy,
+      sandbox: expectedSandbox,
+    })
+    expect(requests[1].method).toBe('turn/start')
+    expect(requests[1].params).toMatchObject({
+      threadId: 'thread-1',
+      approvalPolicy: expectedApprovalPolicy,
+      sandboxPolicy: expectedSandboxPolicy,
     })
   })
 })

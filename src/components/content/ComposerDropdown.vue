@@ -43,7 +43,12 @@
               type="button"
               @click="onSelect(option.value)"
             >
-              {{ option.label }}
+              <span class="composer-dropdown-option-copy">
+                <span class="composer-dropdown-option-label">{{ option.label }}</span>
+                <span v-if="option.description" class="composer-dropdown-option-description">
+                  {{ option.description }}
+                </span>
+              </span>
             </button>
           </li>
           <li v-if="filteredOptions.length === 0" class="composer-dropdown-empty">
@@ -63,6 +68,7 @@ import IconTablerChevronDown from '../icons/IconTablerChevronDown.vue'
 type DropdownOption = {
   value: string
   label: string
+  description?: string
 }
 
 const props = defineProps<{
@@ -109,7 +115,9 @@ const filteredOptions = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) return props.options
   return props.options.filter((option) => {
-    return option.label.toLowerCase().includes(query) || option.value.toLowerCase().includes(query)
+    return option.label.toLowerCase().includes(query) ||
+      option.value.toLowerCase().includes(query) ||
+      (option.description?.toLowerCase().includes(query) ?? false)
   })
 })
 
@@ -283,6 +291,18 @@ onBeforeUnmount(() => {
 
 .composer-dropdown-option.is-selected {
   @apply bg-zinc-100;
+}
+
+.composer-dropdown-option-copy {
+  @apply flex min-w-0 flex-col gap-0.5;
+}
+
+.composer-dropdown-option-label {
+  @apply text-sm font-medium leading-tight text-zinc-800;
+}
+
+.composer-dropdown-option-description {
+  @apply text-xs leading-snug text-zinc-500;
 }
 
 .composer-dropdown-empty {

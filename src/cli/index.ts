@@ -12,8 +12,6 @@ import { Command } from 'commander'
 import qrcode from 'qrcode-terminal'
 import {
   canRunCommand,
-  getNpmGlobalBinDir,
-  getUserNpmPrefix,
   prependPathEntry,
   resolveCodexCommand,
 } from '../commandResolution.js'
@@ -26,9 +24,12 @@ import { createServer as createApp } from '../server/httpServer.js'
 import { generatePassword } from '../server/password.js'
 import { spawnSyncCommand } from '../utils/commandInvocation.js'
 
-const program = new Command().name('codexui').description('Web interface for Codex app-server')
+const APP_VERSION = '0.1.87'
+const program = new Command().name('icodex').description('iCodex web interface for Codex app-server').version(APP_VERSION)
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const OFFICIAL_CODEX_CLI_URL = 'https://developers.openai.com/codex/cli'
 let hasPromptedCloudflaredInstall = false
+let hasPrintedCodexCliInstallInstructions = false
 
 function getCodexHomePath(): string {
   return process.env.CODEX_HOME?.trim() || join(homedir(), '.codex')
@@ -51,11 +52,11 @@ async function persistCloudflaredInstallPrompted(): Promise<void> {
 async function readCliVersion(): Promise<string> {
   try {
     const packageJsonPath = join(__dirname, '..', 'package.json')
-    const raw = await readFile(packageJsonPath, 'utf8')
+    const raw = (await readFile(packageJsonPath, 'utf8')).replace(/^\uFEFF/u, '')
     const parsed = JSON.parse(raw) as { version?: unknown }
-    return typeof parsed.version === 'string' ? parsed.version : 'unknown'
+    return typeof parsed.version === 'string' && parsed.version.trim() ? parsed.version.trim() : APP_VERSION
   } catch {
-    return 'unknown'
+    return APP_VERSION
   }
 }
 
@@ -68,11 +69,6 @@ function runOrFail(command: string, args: string[], label: string): void {
   if (result.status !== 0) {
     throw new Error(`${label} failed with exit code ${String(result.status ?? -1)}`)
   }
-}
-
-function runWithStatus(command: string, args: string[]): number {
-  const result = spawnSyncCommand(command, args, { stdio: 'inherit' })
-  return result.status ?? -1
 }
 
 function resolveCloudflaredCommand(): string | null {
@@ -206,48 +202,25 @@ function hasCodexAuth(): boolean {
   return existsSync(join(codexHome, 'auth.json'))
 }
 
-function ensureCodexInstalled(): string | null {
-  let codexCommand = resolveCodexCommand()
+function printCodexCliInstallInstructions(): void {
+  if (hasPrintedCodexCliInstallInstructions) {
+    return
+  }
+  hasPrintedCodexCliInstallInstructions = true
+  console.warn([
+    '',
+    'Codex CLI not found.',
+    `Install the official OpenAI Codex CLI from: ${OFFICIAL_CODEX_CLI_URL}`,
+    'Recommended npm command: npm install -g @openai/codex',
+    'Or set CODEXUI_CODEX_COMMAND to the path of an existing official codex binary.',
+    '',
+  ].join('\n'))
+}
+
+function resolveCodexCommandOrWarn(): string | null {
+  const codexCommand = resolveCodexCommand()
   if (!codexCommand) {
-    const installWithFallback = (pkg: string, label: string): void => {
-      const status = runWithStatus('npm', ['install', '-g', pkg])
-      if (status === 0) {
-        return
-      }
-      if (isTermuxRuntime()) {
-        throw new Error(`${label} failed with exit code ${String(status)}`)
-      }
-      const userPrefix = getUserNpmPrefix()
-      console.log(`\nGlobal npm install requires elevated permissions. Retrying with --prefix ${userPrefix}...\n`)
-      runOrFail('npm', ['install', '-g', '--prefix', userPrefix, pkg], `${label} (user prefix)`)
-      process.env.PATH = prependPathEntry(process.env.PATH ?? '', getNpmGlobalBinDir(userPrefix))
-    }
-
-    if (isTermuxRuntime()) {
-      console.log('\nCodex CLI not found. Installing Termux-compatible Codex CLI from npm...\n')
-      installWithFallback('@mmmbuto/codex-cli-termux', 'Codex CLI install')
-      codexCommand = resolveCodexCommand()
-      if (!codexCommand) {
-        console.log('\nTermux npm package did not expose `codex`. Installing official CLI fallback...\n')
-        installWithFallback('@openai/codex', 'Codex CLI fallback install')
-      }
-    } else {
-      console.log('\nCodex CLI not found. Installing official Codex CLI from npm...\n')
-      installWithFallback('@openai/codex', 'Codex CLI install')
-    }
-
-    codexCommand = resolveCodexCommand()
-    if (!codexCommand && !isTermuxRuntime()) {
-      // Non-Termux path should resolve after official package install.
-      throw new Error('Official Codex CLI install completed but binary is still not available in PATH')
-    }
-    if (!codexCommand && isTermuxRuntime()) {
-      codexCommand = resolveCodexCommand()
-    }
-    if (!codexCommand) {
-      throw new Error('Codex CLI install completed but binary is still not available in PATH')
-    }
-    console.log('\nCodex CLI installed.\n')
+    printCodexCliInstallInstructions()
   }
   return codexCommand
 }
@@ -514,7 +487,7 @@ async function startServer(options: {
       console.warn(`\n[project] Could not open launch project: ${message}\n`)
     }
   }
-  const codexCommand = ensureCodexInstalled() ?? resolveCodexCommand()
+  const codexCommand = resolveCodexCommandOrWarn()
   if (codexCommand) {
     process.env.CODEXUI_CODEX_COMMAND = codexCommand
   }
@@ -526,7 +499,7 @@ async function startServer(options: {
   }
   const runtimeConfig = resolveAppServerRuntimeConfig()
   if (options.login && !hasCodexAuth()) {
-    console.log('\nCodex is not logged in. You can log in later via settings or run `codexui login`.\n')
+    console.log('\nCodex is not logged in. You can log in later via settings or run `icodex login`.\n')
   }
   const requestedPort = parseInt(options.port, 10)
   const passwordResolution = resolvePassword(options.password)
@@ -559,11 +532,11 @@ async function startServer(options: {
 
   const lines = [
     '',
-    'Codex Web Local is running!',
+    'iCodex is running!',
     `  Version:  ${version}`,
-    '  GitHub:   https://github.com/friuns2/codexui',
     '',
     `  Bind:     http://0.0.0.0:${String(port)}`,
+    `  Codex CLI: ${codexCommand ?? `not found; install from ${OFFICIAL_CODEX_CLI_URL}`}`,
     `  Codex sandbox: ${runtimeConfig.sandboxMode}`,
     `  Approval policy: ${runtimeConfig.approvalPolicy}`,
   ]
@@ -620,7 +593,11 @@ async function startServer(options: {
 }
 
 async function runLogin() {
-  const codexCommand = ensureCodexInstalled() ?? 'codex'
+  const codexCommand = resolveCodexCommandOrWarn()
+  if (!codexCommand) {
+    process.exitCode = 1
+    return
+  }
   process.env.CODEXUI_CODEX_COMMAND = codexCommand
   console.log('\nStarting `codex login`...\n')
   runOrFail(codexCommand, ['login'], 'Codex login')
@@ -706,12 +683,12 @@ program
 
 program.command('login').description('Install/check Codex CLI and run `codex login`').action(runLogin)
 
-program.command('help').description('Show codexui command help').action(() => {
+program.command('help').description('Show icodex command help').action(() => {
   program.outputHelp()
 })
 
 program.parseAsync(process.argv).catch((error) => {
   const message = error instanceof Error ? error.message : String(error)
-  console.error(`\nFailed to run codexui: ${message}`)
+  console.error(`\nFailed to run icodex: ${message}`)
   process.exit(1)
 })

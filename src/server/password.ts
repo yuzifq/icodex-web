@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto'
 
-const CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 function randomGroup(length: number): string {
   let result = ''
@@ -11,5 +11,5 @@ function randomGroup(length: number): string {
 }
 
 export function generatePassword(): string {
-  return `${randomGroup(3)}-${randomGroup(3)}-${randomGroup(3)}`
+  return randomGroup(32)
 }

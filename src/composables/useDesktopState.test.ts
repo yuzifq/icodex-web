@@ -10,6 +10,7 @@ import {
 } from './useDesktopState'
 import type { UiProjectGroup } from '../types/codex'
 import type { WorkspaceRootsState } from '../api/codexGateway'
+import { runtimeConfigForAccessMode } from '../runtimeAccess'
 
 const gatewayMocks = vi.hoisted(() => ({
   archiveThread: vi.fn(),
@@ -439,25 +440,25 @@ describe('collaboration mode selection', () => {
 describe('Codex CLI availability', () => {
   it('surfaces a chat runtime error when the app-server bridge cannot find Codex CLI', async () => {
     installTestWindow()
-    gatewayMocks.getThreadGroupsPage.mockRejectedValue(new Error('Codex CLI is not available. Install @openai/codex or set CODEXUI_CODEX_COMMAND.'))
+    gatewayMocks.getThreadGroupsPage.mockRejectedValue(new Error('Codex CLI is not available. Install the official OpenAI Codex CLI from https://developers.openai.com/codex/cli or set CODEXUI_CODEX_COMMAND.'))
 
     const state = useDesktopState()
 
     await state.refreshAll({ awaitAncillaryRefreshes: true })
 
-    expect(state.codexCliMissingError.value).toBe('Codex CLI not found. Install @openai/codex or set CODEXUI_CODEX_COMMAND.')
+    expect(state.codexCliMissingError.value).toBe('Codex CLI not found. Install the official OpenAI Codex CLI from https://developers.openai.com/codex/cli or set CODEXUI_CODEX_COMMAND.')
   })
 
   it('clears a previous Codex CLI missing banner when a later refresh fails for another reason', async () => {
     installTestWindow()
     gatewayMocks.getThreadGroupsPage
-      .mockRejectedValueOnce(new Error('Codex CLI is not available. Install @openai/codex or set CODEXUI_CODEX_COMMAND.'))
+      .mockRejectedValueOnce(new Error('Codex CLI is not available. Install the official OpenAI Codex CLI from https://developers.openai.com/codex/cli or set CODEXUI_CODEX_COMMAND.'))
       .mockRejectedValueOnce(new Error('Connection lost'))
 
     const state = useDesktopState()
 
     await state.refreshAll({ awaitAncillaryRefreshes: true })
-    expect(state.codexCliMissingError.value).toBe('Codex CLI not found. Install @openai/codex or set CODEXUI_CODEX_COMMAND.')
+    expect(state.codexCliMissingError.value).toBe('Codex CLI not found. Install the official OpenAI Codex CLI from https://developers.openai.com/codex/cli or set CODEXUI_CODEX_COMMAND.')
 
     await state.refreshAll({ awaitAncillaryRefreshes: true })
     expect(state.error.value).toBe('Connection lost')
@@ -1032,7 +1033,7 @@ describe('provider model selection', () => {
     await state.refreshAll({ includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
     await state.sendMessageToNewThread('hi', '/tmp/project')
 
-    expect(gatewayMocks.startThread).toHaveBeenCalledWith('/tmp/project', 'gpt-5.5')
+    expect(gatewayMocks.startThread).toHaveBeenCalledWith('/tmp/project', 'gpt-5.5', undefined)
     expect(gatewayMocks.startThreadTurn).toHaveBeenCalledWith(
       'codex-thread',
       'hi',
@@ -1042,6 +1043,7 @@ describe('provider model selection', () => {
       undefined,
       [],
       'default',
+      undefined,
     )
     expect(state.readModelIdForThread('codex-thread')).toBe('gpt-5.5')
     expect(state.messages.value.some((message) => (
@@ -1059,6 +1061,45 @@ describe('provider model selection', () => {
       'user:hi',
       'assistant:Hi.',
     ])
+  })
+
+  it('passes selected runtime access config when creating a new thread', async () => {
+    installTestWindow()
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([{ value: 'default', label: 'Default' }])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+    gatewayMocks.getAccountRateLimits.mockResolvedValue(null)
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'gpt-5.5',
+      providerId: '',
+      reasoningEffort: 'medium',
+      speedMode: 'standard',
+    })
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5'])
+    gatewayMocks.startThread.mockResolvedValue({
+      threadId: 'access-thread',
+      model: 'gpt-5.5',
+      modelProvider: 'openai',
+    })
+    gatewayMocks.startThreadTurn.mockResolvedValue('turn-1')
+
+    const runtimeConfig = runtimeConfigForAccessMode('full')
+    const state = useDesktopState()
+    await state.refreshAll({ includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
+    await state.sendMessageToNewThread('hi', '/tmp/project', [], [], [], runtimeConfig)
+
+    expect(gatewayMocks.startThread).toHaveBeenCalledWith('/tmp/project', 'gpt-5.5', runtimeConfig)
+    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledWith(
+      'access-thread',
+      'hi',
+      [],
+      'gpt-5.5',
+      'medium',
+      undefined,
+      [],
+      'default',
+      runtimeConfig,
+    )
   })
 
   it('refreshes a loaded optimistic thread when completion events arrive', async () => {
