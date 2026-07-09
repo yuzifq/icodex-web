@@ -14,7 +14,7 @@ Feedback action appears in Settings and on visible error banners after captured 
 3. Reopen Settings and confirm a `Send feedback` row with `Issue detected` appears after the failed request is recorded.
 4. Trigger or view a visible error banner, such as the missing Codex CLI composer banner, a chat send/connection error in the live conversation overlay, a settings provider error, a folder picker error, a Skills Hub error, or a branch dropdown error, and confirm that error state includes a compact `Send feedback` action.
 5. Confirm no feedback action appears in the content header during normal use.
-6. Click `Send feedback` and confirm the mail client opens a draft to `brutalstrikedevs@gmail.com`.
+6. Click `Send feedback` and confirm the mail client opens a draft to `muxue2464@gmail.com`.
 7. Confirm the draft body includes current URL, user agent, viewport, app/worktree version info, and recent diagnostics including the failed request or visible error.
 8. Switch to dark theme and repeat steps 1-7.
 
