@@ -73,7 +73,7 @@ describe('feedback diagnostics', () => {
     const parsed = new URL(mailto)
     const body = parsed.searchParams.get('body') ?? ''
 
-    expect(mailto.startsWith('mailto:brutalstrikedevs@gmail.com?')).toBe(true)
+    expect(mailto.startsWith('mailto:muxue2464@gmail.com?')).toBe(true)
     expect(mailto).toContain('subject=Codex%20Web%20feedback%3A%20Request%20failed%20with%20HTTP%20500')
     expect(mailto).not.toContain('+')
     expect(parsed.searchParams.get('subject')).toContain('Request failed with HTTP 500')
@@ -93,7 +93,7 @@ describe('feedback diagnostics', () => {
   })
 
   it('exposes a minimal mailto href for static anchors', () => {
-    expect(feedbackMailtoBase()).toBe('mailto:brutalstrikedevs@gmail.com')
+    expect(feedbackMailtoBase()).toBe('mailto:muxue2464@gmail.com')
   })
 
   it('dedupes identical newest diagnostics', () => {
