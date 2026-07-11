@@ -1,0 +1,177 @@
+:root.dark .sidebar-main-nav-item {
+  color: oklch(0.92 0.004 286.32) !important;
+}
+
+:root.dark .sidebar-main-nav-item:hover,
+:root.dark .sidebar-main-nav-item.is-active {
+  background-color: #2f333d !important;
+  color: oklch(0.92 0.004 286.32) !important;
+}
+
+:root.dark .sidebar-main-nav-icon,
+:root.dark .sidebar-main-nav-item.is-active .sidebar-main-nav-icon {
+  color: oklch(0.92 0.004 286.32) !important;
+}
+
+:root.dark .content-header-icon-button,
+:root.dark .content-header-icon-action .header-git-trigger {
+  border-color: transparent !important;
+  color: oklch(0.92 0.004 286.32) !important;
+  box-shadow: none !important;
+}
+
+:root.dark .content-header-icon-button.is-open,
+:root.dark .content-header-icon-action.is-review-open .header-git-trigger {
+  border-color: transparent !important;
+  color: oklch(0.92 0.004 286.32) !important;
+  box-shadow: none !important;
+}
+
+:root.dark .thread-composer-shell {
+  --thread-composer-surface: #2a2a2a;
+}
+
+:root.dark .thread-composer-input {
+  color: oklch(0.92 0.004 286.32) !important;
+}
+
+:root.dark .thread-composer-attach-trigger,
+:root.dark .thread-composer-mic {
+  background-color: transparent !important;
+  color: oklch(0.92 0.004 286.32) !important;
+}
+
+:root.dark .thread-composer-access-pill {
+  border-color: transparent !important;
+  background-color: transparent !important;
+  color: #ff8a3d !important;
+}
+
+:root.dark .thread-composer-context-ring-core {
+  background: var(--thread-composer-surface, #2a2a2a) !important;
+}
+
+:root.dark .thread-composer-config-trigger,
+:root.dark .thread-composer-control .composer-dropdown-trigger {
+  border-color: transparent !important;
+  background-color: transparent !important;
+  color: oklch(0.92 0.004 286.32) !important;
+}
+
+:root.dark .thread-composer-config-trigger:hover,
+:root.dark .thread-composer-control .composer-dropdown-trigger:hover {
+  background-color: transparent !important;
+}
+
+.thread-composer-access-dropdown {
+  --thread-composer-access-color: #71717a;
+  --thread-composer-access-hover-bg: #f4f4f5;
+  flex-shrink: 0;
+}
+
+.thread-composer-access-dropdown.is-request {
+  --thread-composer-access-color: #71717a;
+  --thread-composer-access-hover-bg: #f4f4f5;
+}
+
+.thread-composer-access-dropdown.is-auto {
+  --thread-composer-access-color: #5aa8ff;
+  --thread-composer-access-hover-bg: #eff6ff;
+}
+
+.thread-composer-access-dropdown.is-full {
+  --thread-composer-access-color: #f45f16;
+  --thread-composer-access-hover-bg: #fff7ed;
+}
+
+.thread-composer-access-dropdown .composer-dropdown-trigger {
+  min-height: 28px;
+  height: 28px;
+  gap: 6px;
+  border: 1px solid oklch(0.9 0.004 286.32);
+  border-radius: 8px;
+  background: #fff;
+  padding-inline: 10px;
+  color: var(--thread-composer-access-color);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.thread-composer-access-dropdown .composer-dropdown-trigger:hover {
+  background: var(--thread-composer-access-hover-bg);
+}
+
+.thread-composer-access-dropdown .composer-dropdown-value {
+  color: var(--thread-composer-access-color) !important;
+}
+
+.thread-composer-access-dropdown .composer-dropdown-prefix-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--thread-composer-access-color) !important;
+}
+
+.thread-composer-access-dropdown .composer-dropdown-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--thread-composer-access-color) !important;
+}
+
+.thread-composer-access-dropdown .composer-dropdown-menu {
+  min-width: 160px;
+}
+
+.thread-composer-access-dropdown .composer-dropdown-option.is-selected {
+  color: var(--thread-composer-access-color);
+  font-weight: 600;
+}
+
+.thread-composer-access-dropdown .composer-dropdown-option.is-selected .composer-dropdown-option-label {
+  color: var(--thread-composer-access-color);
+}
+
+:root.dark .thread-composer-access-dropdown.is-request {
+  --thread-composer-access-color: #9a9aa3;
+}
+
+:root.dark .thread-composer-access-dropdown.is-auto {
+  --thread-composer-access-color: #6eb6ff;
+}
+
+:root.dark .thread-composer-access-dropdown.is-full {
+  --thread-composer-access-color: #ff7a2f;
+}
+
+:root.dark .thread-composer-access-dropdown .composer-dropdown-trigger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--thread-composer-access-color);
+}
+
+:root.dark .thread-composer-access-dropdown .composer-dropdown-trigger:hover {
+  background: transparent;
+}
+
+:root.dark .thread-composer-access-dropdown .composer-dropdown-menu {
+  border-color: #3f3f46;
+  background: #2a2a2a;
+}
+
+:root.dark .thread-composer-access-dropdown .composer-dropdown-option {
+  color: oklch(0.92 0.004 286.32);
+}
+
+:root.dark .thread-composer-access-dropdown .composer-dropdown-option:hover,
+:root.dark .thread-composer-access-dropdown .composer-dropdown-option.is-selected {
+  background: #3f414a;
+  color: var(--thread-composer-access-color);
+}
+
+:root.dark .thread-composer-access-dropdown .composer-dropdown-option:hover .composer-dropdown-option-label,
+:root.dark .thread-composer-access-dropdown .composer-dropdown-option.is-selected .composer-dropdown-option-label {
+  color: var(--thread-composer-access-color);
+}
+
+:root.dark .thread-composer-access-dropdown .composer-dropdown-option-description {
+  color: #a1a1aa;
+}

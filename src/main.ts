@@ -1,0 +1,18 @@
+import { createApp } from 'vue'
+import App from './App.vue'
+import router from './router'
+import './style.css'
+import './codex-web-my-dark-fixes.css'
+import { t } from './composables/useUiLanguage'
+
+console.log('Welcome to iCodex')
+
+createApp(App).use(router).mount('#app')
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.error(t('Service worker registration failed.'), error)
+    })
+  })
+}
