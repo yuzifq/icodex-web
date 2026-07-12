@@ -157,10 +157,18 @@
                     <button
                       class="sidebar-settings-account-login-button"
                       type="button"
-                      :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin || isCompletingCodexLogin"
+                      :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin || isCompletingCodexLogin || isSavingApiLogin"
                       @click="onStartCodexLogin"
                     >
                       {{ isStartingCodexLogin ? t('Starting login…') : t('Login') }}
+                    </button>
+                    <button
+                      class="sidebar-settings-account-login-button"
+                      type="button"
+                      :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin || isCompletingCodexLogin || isSavingApiLogin"
+                      @click="onOpenApiLoginModal"
+                    >
+                      {{ t('API Login') }}
                     </button>
                     <a
                       v-if="codexLoginUrl"
@@ -176,7 +184,7 @@
                     {{ t('Click Login, or run `codex login`, then click reload.') }}
                   </p>
                   <div v-else class="sidebar-settings-account-list">
-                  <article
+                    <article
                     v-for="account in accounts"
                     :key="account.storageId"
                     class="sidebar-settings-account-item"
@@ -224,7 +232,7 @@
                         {{ getAccountRemoveLabel(account) }}
                       </button>
                     </div>
-                  </article>
+                    </article>
                   </div>
                 </template>
               </div>
@@ -1147,6 +1155,92 @@
       </div>
     </form>
   </div>
+  <div
+    v-if="isApiLoginModalOpen"
+    class="codex-login-modal-backdrop"
+    role="presentation"
+    @click="onCancelApiLoginModal"
+  >
+    <form
+      class="codex-login-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('API Login')"
+      @submit.prevent="onSubmitApiLogin"
+      @click.stop
+    >
+      <div class="codex-login-modal-header">
+        <h2 class="codex-login-modal-title">{{ t('API Login') }}</h2>
+        <button
+          class="codex-login-modal-close"
+          type="button"
+          :aria-label="t('Close')"
+          :disabled="isSavingApiLogin"
+          @click="onCancelApiLoginModal"
+        >
+          ×
+        </button>
+      </div>
+      <p class="codex-login-modal-copy">{{ t('Connect a compatible API endpoint for the current iCodex session.') }}</p>
+      <label class="codex-login-modal-field" for="api-login-url">{{ t('API endpoint URL') }}</label>
+      <input
+        id="api-login-url"
+        v-model="apiLoginUrl"
+        class="codex-login-modal-input"
+        type="url"
+        inputmode="url"
+        autocomplete="url"
+        :placeholder="t('https://api.example.com/v1')"
+        :disabled="isSavingApiLogin"
+      >
+      <label class="codex-login-modal-field" for="api-login-key">{{ t('API key') }}</label>
+      <input
+        id="api-login-key"
+        v-model="apiLoginKey"
+        class="codex-login-modal-input"
+        type="password"
+        autocomplete="off"
+        :placeholder="t('sk-...')"
+        :disabled="isSavingApiLogin"
+      >
+      <div class="codex-login-modal-format" role="group" :aria-label="t('API format')">
+        <span class="codex-login-modal-field">{{ t('API format') }}</span>
+        <div class="sidebar-settings-segmented">
+          <button
+            type="button"
+            class="sidebar-settings-segmented-option"
+            :class="{ 'is-active': apiLoginWireApi === 'responses' }"
+            :disabled="isSavingApiLogin"
+            @click="apiLoginWireApi = 'responses'"
+          >
+            Responses
+          </button>
+          <button
+            type="button"
+            class="sidebar-settings-segmented-option"
+            :class="{ 'is-active': apiLoginWireApi === 'chat' }"
+            :disabled="isSavingApiLogin"
+            @click="apiLoginWireApi = 'chat'"
+          >
+            Completions
+          </button>
+        </div>
+      </div>
+      <div v-if="apiLoginError" class="codex-login-modal-error">{{ apiLoginError }}</div>
+      <div class="codex-login-modal-actions">
+        <button class="codex-login-modal-cancel" type="button" :disabled="isSavingApiLogin" @click="onCancelApiLoginModal">
+          {{ t('Cancel') }}
+        </button>
+        <button
+          class="codex-login-modal-submit"
+          type="submit"
+          :disabled="isSavingApiLogin || !apiLoginUrl.trim() || !apiLoginKey.trim()"
+        >
+          {{ isSavingApiLogin ? t('Connecting...') : t('Connect') }}
+        </button>
+      </div>
+    </form>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -1556,6 +1650,12 @@ const isCodexLoginModalOpen = ref(false)
 const codexLoginUrl = ref('')
 const codexLoginCallbackUrl = ref('')
 const codexLoginCallbackInputRef = ref<HTMLInputElement | null>(null)
+const isApiLoginModalOpen = ref(false)
+const isSavingApiLogin = ref(false)
+const apiLoginUrl = ref('')
+const apiLoginKey = ref('')
+const apiLoginWireApi = ref<'responses' | 'chat'>('responses')
+const apiLoginError = ref('')
 const removingAccountId = ref('')
 const confirmingRemoveAccountId = ref('')
 const hoveredAccountId = ref('')
@@ -2309,7 +2409,7 @@ function isAccountUnavailable(account: UiAccountEntry): boolean {
 }
 
 function isAccountActionDisabled(account: UiAccountEntry): boolean {
-  return isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || removingAccountId.value.length > 0
+  return isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || isSavingApiLogin.value || removingAccountId.value.length > 0
     || (account.isActive && removingAccountId.value !== account.storageId && isAccountSwitchBlocked.value)
 }
 
@@ -2433,7 +2533,7 @@ async function loadAccountsState(options: { silent?: boolean } = {}): Promise<vo
 }
 
 async function onRefreshAccounts(): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value) return
+  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || isSavingApiLogin.value) return
   accountActionError.value = ''
   hoveredAccountId.value = ''
   confirmingRemoveAccountId.value = ''
@@ -2454,7 +2554,7 @@ async function onRefreshAccounts(): Promise<void> {
 }
 
 async function onSwitchAccount(storageId: string): Promise<void> {
-  if (isSwitchingAccounts.value || isRefreshingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value) return
+  if (isSwitchingAccounts.value || isRefreshingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || isSavingApiLogin.value) return
   if (isAccountSwitchBlocked.value) {
     accountActionError.value = t('Finish the current turn and pending requests before switching accounts.')
     return
@@ -2484,7 +2584,7 @@ async function onSwitchAccount(storageId: string): Promise<void> {
 }
 
 async function onStartCodexLogin(): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value) return
+  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || isSavingApiLogin.value) return
   accountActionError.value = ''
   codexLoginCallbackUrl.value = ''
   isStartingCodexLogin.value = true
@@ -2499,6 +2599,62 @@ async function onStartCodexLogin(): Promise<void> {
     accountActionError.value = error instanceof Error ? error.message : t('Failed to start Codex login')
   } finally {
     isStartingCodexLogin.value = false
+  }
+}
+
+function onOpenApiLoginModal(): void {
+  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || isSavingApiLogin.value) return
+  apiLoginUrl.value = customEndpointUrl.value
+  apiLoginKey.value = ''
+  apiLoginWireApi.value = customEndpointWireApi.value
+  apiLoginError.value = ''
+  isApiLoginModalOpen.value = true
+}
+
+function onCancelApiLoginModal(): void {
+  if (isSavingApiLogin.value) return
+  isApiLoginModalOpen.value = false
+  apiLoginKey.value = ''
+  apiLoginError.value = ''
+}
+
+async function onSubmitApiLogin(): Promise<void> {
+  if (isSavingApiLogin.value) return
+  const rawUrl = apiLoginUrl.value.trim()
+  const apiKey = apiLoginKey.value.trim()
+  if (!rawUrl || !apiKey) return
+  let endpointUrl: URL
+  try {
+    endpointUrl = new URL(rawUrl)
+  } catch {
+    apiLoginError.value = t('Enter a valid API endpoint URL')
+    return
+  }
+  if (endpointUrl.protocol !== 'https:' && endpointUrl.protocol !== 'http:') {
+    apiLoginError.value = t('Enter a valid API endpoint URL')
+    return
+  }
+
+  isSavingApiLogin.value = true
+  apiLoginError.value = ''
+  try {
+    const baseUrl = rawUrl.replace(/\/+$/u, '')
+    await setCustomProvider(baseUrl, apiKey, {
+      wireApi: apiLoginWireApi.value,
+    })
+    selectedProvider.value = 'custom'
+    customEndpointUrl.value = baseUrl
+    customEndpointKey.value = ''
+    customEndpointWireApi.value = apiLoginWireApi.value
+    freeModeEnabled.value = true
+    apiLoginKey.value = ''
+    isApiLoginModalOpen.value = false
+    await loadFreeModeStatus()
+    await refreshAll({ includeSelectedThreadMessages: false, providerChanged: true, awaitAncillaryRefreshes: true })
+  } catch (error) {
+    apiLoginError.value = error instanceof Error ? error.message : t('Failed to connect API endpoint')
+  } finally {
+    isSavingApiLogin.value = false
   }
 }
 
@@ -2537,7 +2693,7 @@ async function completeCodexLoginFromCallback(callbackUrl: string): Promise<void
 }
 
 async function onRemoveAccount(storageId: string): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || removingAccountId.value.length > 0) return
+  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || isSavingApiLogin.value || removingAccountId.value.length > 0) return
   const targetAccount = accounts.value.find((account) => account.storageId === storageId) ?? null
   if (!targetAccount) return
   if (confirmingRemoveAccountId.value !== storageId) {
@@ -5460,6 +5616,14 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
   @apply text-sm leading-5 text-zinc-600;
 }
 
+.codex-login-modal-field {
+  @apply text-xs font-medium text-zinc-700;
+}
+
+.codex-login-modal-format {
+  @apply flex flex-col gap-1.5;
+}
+
 .codex-login-modal-link {
   @apply min-w-0 truncate text-sm text-blue-600 hover:text-blue-700 hover:underline;
 }
@@ -5499,6 +5663,10 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 :global(:root.dark) .codex-login-modal-copy {
+  @apply text-zinc-300;
+}
+
+:global(:root.dark) .codex-login-modal-field {
   @apply text-zinc-300;
 }
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { classifyGithubDeviceTokenResponse, listOwnedGithubRepositories, validateSkillsRepository } from './skillsRoutes.js'
+import { classifyGithubDeviceTokenResponse, createGithubSkillsRepository, listOwnedGithubRepositories, validateSkillsRepository } from './skillsRoutes.js'
 
 function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -67,6 +67,37 @@ describe('GitHub Skills repository selection', () => {
 
     await expect(validateSkillsRepository('token', 'alice', 'alice', 'skills'))
       .resolves.toEqual({ empty: true, branch: 'main' })
+  })
+
+  it('creates a private Skills repository under the logged-in account', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      name: 'icodex-skills',
+      full_name: 'alice/icodex-skills',
+      owner: { login: 'alice' },
+      permissions: { push: true },
+      size: 0,
+      private: true,
+      default_branch: 'main',
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createGithubSkillsRepository('token', 'alice', 'icodex-skills')).resolves.toEqual(
+      expect.objectContaining({ fullName: 'alice/icodex-skills', private: true, empty: true }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith('https://api.github.com/user/repos', expect.objectContaining({ method: 'POST' }))
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      name: 'icodex-skills',
+      private: true,
+      auto_init: false,
+    })
+  })
+
+  it('rejects an unsafe new repository name before calling GitHub', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createGithubSkillsRepository('token', 'alice', '../skills')).rejects.toThrow('Enter a valid repository name')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('rejects a non-empty repository without a Skills manifest', async () => {

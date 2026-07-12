@@ -1904,7 +1904,11 @@ export async function setCustomProvider(
       provider: options?.provider,
     }),
   })
-  return await response.json() as { ok: boolean }
+  const payload = await response.json() as { ok?: boolean; error?: string }
+  if (!response.ok || payload.ok !== true) {
+    throw new Error(payload.error || 'Failed to set custom provider')
+  }
+  return { ok: true }
 }
 
 async function fetchProviderModelIds(providerId?: string): Promise<{ ids: string[], exclusive: boolean } | null> {

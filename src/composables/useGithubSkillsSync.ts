@@ -52,6 +52,7 @@ export function useGithubSkillsSync(options: UseGithubSkillsSyncOptions) {
   const isGithubLoginInFlight = ref(false)
   const githubRepositories = ref<GithubRepository[]>([])
   const selectedGithubRepository = ref('')
+  const newGithubRepositoryName = ref('icodex-skills')
   const githubRepositoryError = ref('')
   const isGithubRepositoryPromptOpen = ref(false)
   const isGithubRepositoryLoading = ref(false)
@@ -253,6 +254,33 @@ export function useGithubSkillsSync(options: UseGithubSkillsSyncOptions) {
     }
   }
 
+  async function createGithubRepository(): Promise<void> {
+    const name = newGithubRepositoryName.value.trim()
+    if (!name) {
+      githubRepositoryError.value = 'Enter a valid repository name'
+      return
+    }
+    isGithubRepositoryLoading.value = true
+    githubRepositoryError.value = ''
+    try {
+      const resp = await fetch('/codex-api/skills-sync/github/create-repository', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const payload = (await resp.json()) as { ok?: boolean; error?: string }
+      if (!resp.ok || !payload.ok) throw new Error(payload.error || 'Failed to create Skills repository')
+      isGithubRepositoryPromptOpen.value = false
+      await loadSyncStatus()
+      await options.onPulled()
+      options.showToast('Skills repository created and connected')
+    } catch (e) {
+      githubRepositoryError.value = e instanceof Error ? e.message : 'Failed to create Skills repository'
+    } finally {
+      isGithubRepositoryLoading.value = false
+    }
+  }
+
   async function pullSkillsSync(): Promise<void> {
     syncActionError.value = ''
     syncActionStatus.value = 'pull-started'
@@ -335,6 +363,7 @@ export function useGithubSkillsSync(options: UseGithubSkillsSyncOptions) {
     closeGithubClientIdPrompt,
     closeGithubRepositoryPrompt,
     configureGithubClientId,
+    createGithubRepository,
     deviceLogin,
     githubClientIdError,
     githubClientIdInput,
@@ -351,6 +380,7 @@ export function useGithubSkillsSync(options: UseGithubSkillsSyncOptions) {
     loadSyncStatus,
     openGithubRepositoryPrompt,
     logoutGithub,
+    newGithubRepositoryName,
     pullSkillsSync,
     pushSkillsSync,
     selectGithubRepository,

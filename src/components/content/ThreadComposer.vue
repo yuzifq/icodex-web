@@ -332,16 +332,29 @@
               role="group"
               :aria-label="t('Advanced')"
             >
-              <button
-                class="thread-composer-config-advanced-header"
-                type="button"
-                :aria-label="t('Advanced')"
-                @click="toggleAdvancedComposerConfig"
-              >
-                <span>{{ t('Advanced') }}</span>
-                <IconTablerChevronRight class="thread-composer-config-nav-icon" />
-                <IconTablerBolt class="thread-composer-config-advanced-bolt" />
-              </button>
+              <div class="thread-composer-config-advanced-header">
+                <button
+                  class="thread-composer-config-advanced-back"
+                  type="button"
+                  :aria-label="t('Advanced')"
+                  @click="toggleAdvancedComposerConfig"
+                >
+                  <span>{{ t('Advanced') }}</span>
+                  <IconTablerChevronRight class="thread-composer-config-nav-icon" />
+                </button>
+                <button
+                  class="thread-composer-config-advanced-fast-toggle"
+                  :class="{ 'is-active': selectedSpeedMode === 'fast' }"
+                  type="button"
+                  :aria-label="t('Fast')"
+                  :aria-pressed="selectedSpeedMode === 'fast'"
+                  :title="t('Fast')"
+                  :disabled="isSpeedModeOptionDisabled('fast')"
+                  @click="toggleAdvancedFastMode"
+                >
+                  <IconTablerBolt class="thread-composer-config-advanced-bolt" />
+                </button>
+              </div>
               <div v-if="advancedModelOptions.length > 0" class="thread-composer-config-advanced-slider-wrap">
                 <input
                   class="thread-composer-config-advanced-slider"
@@ -940,7 +953,7 @@ const standaloneFileAttachments = computed(() => {
 })
 const isInteractionDisabled = computed(() => props.disabled || !props.activeThreadId)
 const isComposerConfigDisabled = computed(() => props.disabled || !props.activeThreadId)
-const isFastModeSupported = computed(() => /^gpt-5\.(?:4|5|6)(?:$|-)/.test(props.selectedModel.trim()))
+const isFastModeSupported = computed(() => props.selectedModelSupportsFast)
 const showFastModeModelIcon = computed(() =>
   props.selectedSpeedMode === 'fast' && isFastModeSupported.value,
 )
@@ -1278,6 +1291,11 @@ function onSpeedModeSelect(value: SpeedMode): void {
   if (isSpeedModeOptionDisabled(value)) return
   emit('update:selected-speed-mode', value)
   closeComposerConfigMenu()
+}
+
+function toggleAdvancedFastMode(): void {
+  if (isSpeedModeOptionDisabled('fast')) return
+  emit('update:selected-speed-mode', props.selectedSpeedMode === 'fast' ? 'standard' : 'fast')
 }
 
 function openComposerConfigSubmenu(view: 'model' | 'reasoning' | 'speed'): void {
@@ -2606,11 +2624,23 @@ watch(
 }
 
 .thread-composer-config-advanced-header {
-  @apply flex min-h-9 w-full items-center gap-1 border-0 bg-transparent px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-700/80 hover:text-zinc-100;
+  @apply flex min-h-9 w-full items-center gap-1 px-3 py-2;
+}
+
+.thread-composer-config-advanced-back {
+  @apply flex min-h-8 min-w-0 flex-1 items-center gap-1 border-0 bg-transparent px-0 text-left text-sm text-zinc-300 transition hover:text-zinc-100;
+}
+
+.thread-composer-config-advanced-fast-toggle {
+  @apply grid size-7 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-zinc-400 transition hover:bg-zinc-700 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+.thread-composer-config-advanced-fast-toggle.is-active {
+  @apply border-blue-400/50 bg-blue-500/20 text-blue-300;
 }
 
 .thread-composer-config-advanced-bolt {
-  @apply ml-auto h-4 w-4 shrink-0 text-zinc-400;
+  @apply h-4 w-4 shrink-0;
 }
 
 .thread-composer-config-advanced-slider-wrap {

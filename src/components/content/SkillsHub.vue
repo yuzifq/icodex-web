@@ -124,6 +124,22 @@
             </span>
           </label>
         </div>
+        <div class="github-repository-create">
+          <label for="github-new-skills-repository">{{ t('New Skills repository name') }}</label>
+          <input
+            id="github-new-skills-repository"
+            v-model="newGithubRepositoryName"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            :disabled="isGithubRepositoryLoading"
+            :placeholder="t('icodex-skills')"
+          />
+          <span>{{ t('Creates and connects a private repository in your GitHub account.') }}</span>
+          <button type="button" class="skills-hub-sort" :disabled="isGithubRepositoryLoading" @click="createGithubRepository">
+            {{ isGithubRepositoryLoading ? t('Creating...') : t('Create private Skills repository') }}
+          </button>
+        </div>
         <span v-if="githubRepositoryError" class="github-client-id-error">{{ t(githubRepositoryError) }}</span>
         <div class="github-client-id-actions">
           <button type="button" class="skills-hub-sort" :disabled="isGithubRepositoryLoading" @click="closeGithubRepositoryPrompt">
@@ -437,6 +453,7 @@ const {
   closeGithubClientIdPrompt,
   closeGithubRepositoryPrompt,
   configureGithubClientId,
+  createGithubRepository,
   deviceLogin,
   githubClientIdError,
   githubClientIdInput,
@@ -452,6 +469,7 @@ const {
   isSyncActionInFlight,
   loadSyncStatus,
   logoutGithub,
+  newGithubRepositoryName,
   openGithubRepositoryPrompt,
   pullSkillsSync,
   pushSkillsSync,
@@ -579,6 +597,22 @@ onMounted(() => {
 
 .github-repository-list {
   @apply flex min-h-0 flex-col gap-1 overflow-y-auto border-y border-zinc-200 py-2;
+}
+
+.github-repository-create {
+  @apply flex flex-col gap-2 border-t border-zinc-200 pt-3 text-xs text-zinc-500;
+}
+
+.github-repository-create label {
+  @apply font-medium text-zinc-700;
+}
+
+.github-repository-create input {
+  @apply w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-800 outline-none focus:border-zinc-400;
+}
+
+.github-repository-create button {
+  @apply self-start;
 }
 
 .github-repository-option {

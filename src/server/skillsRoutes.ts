@@ -793,6 +793,54 @@ export async function listOwnedGithubRepositories(token: string, username: strin
     .filter((record) => record.name.length > 0)
 }
 
+function normalizeNewGithubRepositoryName(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const name = value.trim()
+  if (name.length === 0 || name.length > 100 || !/^[A-Za-z0-9_.-]+$/u.test(name) || name === '.' || name === '..') {
+    return ''
+  }
+  return name
+}
+
+export async function createGithubSkillsRepository(
+  token: string,
+  username: string,
+  rawName: unknown,
+): Promise<GithubRepositorySummary> {
+  const name = normalizeNewGithubRepositoryName(rawName)
+  if (!name) {
+    throw new Error('Enter a valid repository name')
+  }
+
+  const created = await getGithubJson<GithubRepositoryApiRecord>(
+    'https://api.github.com/user/repos',
+    token,
+    'POST',
+    {
+      name,
+      description: 'Private Skills sync repository for iCodex',
+      private: true,
+      auto_init: false,
+    },
+  )
+  const owner = created.owner?.login ?? username
+  if (owner.toLowerCase() !== username.toLowerCase() || !created.name) {
+    throw new Error('GitHub created a repository that is not owned by the logged-in account')
+  }
+  if (created.permissions?.push === false || created.archived === true || created.disabled === true) {
+    throw new Error('The new GitHub repository does not allow Skills sync')
+  }
+  return {
+    owner,
+    name: created.name,
+    fullName: created.full_name ?? `${owner}/${created.name}`,
+    private: created.private !== false,
+    empty: (created.size ?? 0) === 0,
+    defaultBranch: created.default_branch || DEFAULT_SYNC_BRANCH,
+    updatedAt: created.updated_at ?? '',
+  }
+}
+
 async function getGithubRepositoryDetails(token: string, owner: string, name: string): Promise<GithubRepositoryApiRecord> {
   return await getGithubJson<GithubRepositoryApiRecord>(`https://api.github.com/repos/${owner}/${name}`, token)
 }
@@ -1593,6 +1641,32 @@ export async function handleSkillsRoutes(
       })
     } catch (error) {
       setJson(res, 400, { error: getErrorMessage(error, 'Failed to select Skills repository') })
+    }
+    return true
+  }
+
+  if (req.method === 'POST' && url.pathname === '/codex-api/skills-sync/github/create-repository') {
+    try {
+      const state = await readSkillsSyncState()
+      if (!state.githubToken || !state.githubUsername) {
+        setJson(res, 401, { error: 'GitHub login required' })
+        return true
+      }
+      const payload = asRecord(await readJsonBody(req))
+      const created = await createGithubSkillsRepository(state.githubToken, state.githubUsername, payload?.name)
+      try {
+        const selected = await selectSkillsRepository(state, created.owner, created.name, appServer)
+        setJson(res, 200, {
+          ok: true,
+          data: { owner: selected.repoOwner, name: selected.repoName, branch: selected.repoBranch },
+        })
+      } catch (error) {
+        setJson(res, 502, {
+          error: `Created ${created.fullName}, but could not initialize Skills sync: ${getErrorMessage(error, 'unknown error')}`,
+        })
+      }
+    } catch (error) {
+      setJson(res, 400, { error: getErrorMessage(error, 'Failed to create Skills repository') })
     }
     return true
   }

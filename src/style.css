@@ -1675,6 +1675,18 @@
   @apply border-zinc-700;
 }
 
+:root.dark .github-repository-create {
+  @apply border-zinc-700 text-zinc-400;
+}
+
+:root.dark .github-repository-create label {
+  @apply text-zinc-300;
+}
+
+:root.dark .github-repository-create input {
+  @apply border-zinc-700 bg-zinc-800 text-zinc-100 focus:border-zinc-500;
+}
+
 :root.dark .github-repository-option {
   @apply hover:bg-zinc-800;
 }

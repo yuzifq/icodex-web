@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getAvailableModelIds, getThreadDetail, listDirectoryComposioConnectors, resumeThread, startThread, startThreadTurn } from './codexGateway'
+import { getAvailableModelIds, getThreadDetail, listDirectoryComposioConnectors, resumeThread, setCustomProvider, startThread, startThreadTurn } from './codexGateway'
 import { runtimeConfigForAccessMode } from '../runtimeAccess'
 
 function mockRpcFetch(): { requests: Array<{ method: string, params: Record<string, unknown> }> } {
@@ -151,6 +151,37 @@ describe('listDirectoryComposioConnectors', () => {
     await listDirectoryComposioConnectors('instagram', '50', 25)
 
     expect(requests).toEqual(['/codex-api/composio/connectors?query=instagram&cursor=50&limit=25'])
+  })
+})
+
+describe('setCustomProvider', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('sends the endpoint, key, and selected API format', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(setCustomProvider('https://proxy.example.com/v1', 'sk-test', { wireApi: 'chat' })).resolves.toEqual({ ok: true })
+    expect(fetchMock).toHaveBeenCalledWith('/codex-api/free-mode/custom-provider', expect.objectContaining({ method: 'POST' }))
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      baseUrl: 'https://proxy.example.com/v1',
+      apiKey: 'sk-test',
+      wireApi: 'chat',
+    })
+  })
+
+  it('surfaces a failed provider save to the API login UI', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'baseUrl is required' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })))
+
+    await expect(setCustomProvider('', 'sk-test')).rejects.toThrow('baseUrl is required')
   })
 })
 
