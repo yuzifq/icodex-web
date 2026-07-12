@@ -6,7 +6,7 @@ const MAX_BODY_CHARS = 6500
 const MAX_PAGE_TEXT_CHARS = 1800
 const MAX_STORAGE_ITEMS = 12
 const MAX_STORAGE_VALUE_CHARS = 240
-const APP_VERSION_FALLBACK = '0.2.01'
+const APP_VERSION_FALLBACK = '0.2.02'
 const SENSITIVE_STORAGE_PATTERN = /token|secret|password|passwd|credential|authorization|auth|bearer|cookie|session|key/i
 
 export type FeedbackDiagnosticKind = 'window-error' | 'unhandled-rejection' | 'fetch-error' | 'api-response' | 'visible-error'

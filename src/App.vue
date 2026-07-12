@@ -1320,7 +1320,7 @@ const { t, uiLanguage, uiLanguageOptions, setUiLanguage } = useUiLanguage()
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'codex-web-local.sidebar-collapsed.v1'
 const ACCOUNTS_SECTION_COLLAPSED_STORAGE_KEY = 'codex-web-local.accounts-section-collapsed.v1'
-const APP_VERSION_FALLBACK = '0.2.01'
+const APP_VERSION_FALLBACK = '0.2.02'
 const worktreeName = import.meta.env.VITE_WORKTREE_NAME ?? 'unknown'
 const appVersion = import.meta.env.VITE_APP_VERSION ?? APP_VERSION_FALLBACK
 const SETTINGS_HELP = {
