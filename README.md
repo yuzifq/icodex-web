@@ -1,18 +1,20 @@
 # iCodex
 
-由于上游npm似乎出现某些安全问题，于是决定改为自主ip部署和内外部署
+简体中文 | [English](./README.en.md)
 
-需提前下载codex cli,或者codex桌面端
+由于上游 npm 似乎出现某些安全问题，于是决定改为自主 IP 部署和内外部署。
 
-下载压缩包后，选择本地启动.bat即启动内网访问
+需提前下载 Codex CLI，或者 Codex 桌面端。
 
-选择云端启动.bat前需使用云端首次配置.bat
+下载压缩包后，选择本地启动 `.bat` 即启动内网访问。
 
-### 注意：
+选择云端启动 `.bat` 前需使用云端首次配置 `.bat`。
 
-该项目已经无法连接上游app
+### 注意
 
-前端展示在Readme最下方
+该项目已经无法连接上游 app。
+
+前端展示在 README 最下方。
 
 ## 项目内容
 
@@ -21,7 +23,6 @@
 - 与本机 Codex app-server 通信
 - 中文界面与移动端布局调整
 - 本地密码保护
-
 
 ## 环境要求
 
@@ -51,6 +52,7 @@ node dist-cli/index.js --port 5900 --no-open
 
 如果没有指定 `--password` 或 `--no-password`，服务会生成临时密码，并把密码写入本机 Codex home 目录。
 
+## 前端展示
 
 <img width="2549" height="1191" alt="image" src="https://github.com/user-attachments/assets/47bead2a-43a0-4492-ae20-2e4f1599dbc9" />
 <img width="2549" height="1191" alt="image" src="https://github.com/user-attachments/assets/5934aa14-9116-46cf-b94a-1d96246f44c8" />
