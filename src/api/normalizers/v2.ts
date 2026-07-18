@@ -36,6 +36,66 @@ function readTurnErrorText(turn: Turn): string {
   return typeof error?.message === 'string' ? error.message.trim() : ''
 }
 
+function readCompletedTurnDurationMs(turn: Turn): number | null {
+  if (turn.status !== 'completed') return null
+
+  const rawTurn = turn as unknown as Record<string, unknown>
+  const durationMs = rawTurn.durationMs
+  if (typeof durationMs === 'number' && Number.isFinite(durationMs) && durationMs >= 0) {
+    return durationMs
+  }
+
+  const startedAt = rawTurn.startedAt
+  const completedAt = rawTurn.completedAt
+  if (
+    typeof startedAt === 'number' && Number.isFinite(startedAt) &&
+    typeof completedAt === 'number' && Number.isFinite(completedAt) &&
+    completedAt >= startedAt
+  ) {
+    // The app-server timestamps are Unix seconds when durationMs is unavailable.
+    return (completedAt - startedAt) * 1000
+  }
+
+  return null
+}
+
+function buildTurnSummaryMessage(turnId: string, turnIndex: number, durationMs: number): UiMessage {
+  return {
+    id: `turn-summary:${turnId}`,
+    role: 'system',
+    text: `Worked for ${Math.max(0, Math.round(durationMs / 1000))}s`,
+    messageType: 'worked',
+    turnId,
+    turnIndex,
+    turnDurationMs: durationMs,
+  }
+}
+
+function insertCompletedTurnSummary(messages: UiMessage[], turnId: string | undefined, turnIndex: number, turn: Turn): UiMessage[] {
+  if (!turnId) return messages
+
+  const durationMs = readCompletedTurnDurationMs(turn)
+  if (durationMs === null) return messages
+
+  let finalAssistantIndex = -1
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message.role === 'assistant' && message.messageType === 'agentMessage') {
+      finalAssistantIndex = index
+      break
+    }
+  }
+  if (finalAssistantIndex < 0) return messages
+
+  const withActivityMarkers = messages.map((message, index) => (
+    index < finalAssistantIndex && message.role !== 'user'
+      ? { ...message, isTurnActivity: true }
+      : message
+  ))
+  withActivityMarkers.splice(finalAssistantIndex, 0, buildTurnSummaryMessage(turnId, turnIndex, durationMs))
+  return withActivityMarkers
+}
+
 const FILE_ATTACHMENT_LINE = /^##\s+(.+?):\s+(.+?)\s*$/
 const FILES_MENTIONED_MARKER = /^#\s*files mentioned by the user\s*:?\s*$/i
 
@@ -528,11 +588,13 @@ export function normalizeThreadMessagesV2(payload: ThreadReadResponse, baseTurnI
     const rawTurnId = typeof turn?.id === 'string' ? turn.id.trim() : ''
     const turnId = rawTurnId.length > 0 ? rawTurnId : undefined
     const items = Array.isArray(turn.items) ? turn.items : []
+    const turnMessages: UiMessage[] = []
     for (const item of items) {
       for (const msg of toUiMessages(item)) {
-        messages.push({ ...msg, turnId, turnIndex })
+        turnMessages.push({ ...msg, turnId, turnIndex })
       }
     }
+    messages.push(...insertCompletedTurnSummary(turnMessages, turnId, turnIndex, turn))
     const errorText = readTurnErrorText(turn)
     if (turn.status === 'failed' && errorText) {
       const errorIdBase = turnId ?? `turn-${turnIndex}`

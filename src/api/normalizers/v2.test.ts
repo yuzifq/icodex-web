@@ -106,6 +106,33 @@ Reply with &lt;/instructions&gt; and A &amp; B
     })
   })
 
+  it('groups completed turn activity behind a persisted duration summary', () => {
+    const response = threadReadResponseWithContent([
+      {
+        type: 'userMessage',
+        id: 'user-activity',
+        content: [{ type: 'text', text: 'Please investigate this.', text_elements: [] }],
+      },
+      { type: 'agentMessage', id: 'progress-activity', text: 'I will inspect the data first.' },
+      { type: 'agentMessage', id: 'final-activity', text: 'The issue is fixed.' },
+    ])
+    ;(response.thread.turns[0] as unknown as { durationMs: number }).durationMs = 499_000
+
+    const messages = normalizeThreadMessagesV2(response)
+
+    expect(messages).toMatchObject([
+      { id: 'user-activity', role: 'user' },
+      { id: 'progress-activity', role: 'assistant', isTurnActivity: true },
+      {
+        id: 'turn-summary:turn-1',
+        messageType: 'worked',
+        text: 'Worked for 499s',
+        turnDurationMs: 499_000,
+      },
+      { id: 'final-activity', role: 'assistant' },
+    ])
+  })
+
   it('renders failed turn errors as chat system messages', () => {
     const response = threadReadResponseWithContent([{
       type: 'userMessage',

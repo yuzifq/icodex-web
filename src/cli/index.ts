@@ -17,7 +17,7 @@ import { createServer as createApp } from '../server/httpServer.js'
 import { generatePassword } from '../server/password.js'
 import { spawnSyncCommand } from '../utils/commandInvocation.js'
 
-const APP_VERSION = '0.2.02'
+const APP_VERSION = '0.2.03'
 const program = new Command().name('icodex').description('iCodex web interface for Codex app-server').version(APP_VERSION)
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OFFICIAL_CODEX_CLI_URL = 'https://developers.openai.com/codex/cli'

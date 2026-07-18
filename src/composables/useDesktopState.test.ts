@@ -650,6 +650,48 @@ describe('live error overlay', () => {
     })
   })
 
+  it('summarizes live command execution as a thinking process', async () => {
+    installTestWindow()
+    let notificationHandler: (notification: { method: string; params?: unknown }) => void = () => {}
+    gatewayMocks.subscribeCodexNotifications.mockImplementation((handler) => {
+      notificationHandler = handler
+      return vi.fn()
+    })
+    gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+    gatewayMocks.resumeThread.mockResolvedValue(null)
+    gatewayMocks.getThreadDetail.mockResolvedValue({
+      messages: [],
+      inProgress: true,
+      activeTurnId: 'turn-command',
+      turnIndexByTurnId: { 'turn-command': 0 },
+      hasMoreOlder: false,
+    })
+
+    const state = useDesktopState()
+    state.primeSelectedThread('thread-command')
+    await state.loadMessages('thread-command')
+    state.startPolling()
+
+    notificationHandler({
+      method: 'item/started',
+      params: {
+        threadId: 'thread-command',
+        turnId: 'turn-command',
+        item: {
+          type: 'commandExecution',
+          id: 'command-1',
+          command: 'npm test',
+          cwd: '/tmp/project',
+        },
+      },
+    })
+
+    expect(state.selectedLiveOverlay.value).toMatchObject({
+      turnId: 'turn-command',
+      processes: [{ kind: 'command', label: 'Running a command' }],
+    })
+  })
+
   it('keeps a new live error visible when an older persisted turn error exists', async () => {
     installTestWindow()
     let notificationHandler: (notification: { method: string; params?: unknown }) => void = () => {}

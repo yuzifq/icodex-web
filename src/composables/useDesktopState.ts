@@ -49,6 +49,7 @@ import type {
   SpeedMode,
   UiFileChange,
   UiLiveOverlay,
+  UiLiveProcessEntry,
   UiMessage,
   UiPlanData,
   UiPlanStep,
@@ -944,26 +945,33 @@ function buildTurnSummaryMessage(summary: TurnSummaryState): UiMessage {
     text: `Worked for ${formatTurnDuration(summary.durationMs)}`,
     messageType: WORKED_MESSAGE_TYPE,
     turnId: summary.turnId,
+    turnDurationMs: summary.durationMs,
   }
 }
 
-function findLastAssistantMessageIndex(messages: UiMessage[]): number {
+function findLastAssistantMessageIndex(messages: UiMessage[], turnId?: string): number {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (messages[index].role === 'assistant') {
-      return index
-    }
+    const message = messages[index]
+    if (message.role !== 'assistant') continue
+    if (!turnId || message.turnId === turnId) return index
   }
   return -1
 }
 
 function insertTurnSummaryMessage(messages: UiMessage[], summary: TurnSummaryState): UiMessage[] {
-  const summaryMessage = buildTurnSummaryMessage(summary)
-  const sanitizedMessages = messages.filter((message) => message.messageType !== WORKED_MESSAGE_TYPE)
-  const insertIndex = findLastAssistantMessageIndex(sanitizedMessages)
-  if (insertIndex < 0) {
-    return [...sanitizedMessages, summaryMessage]
+  if (messages.some((message) => message.messageType === WORKED_MESSAGE_TYPE && message.turnId === summary.turnId)) {
+    return messages
   }
-  const next = [...sanitizedMessages]
+
+  const summaryMessage = buildTurnSummaryMessage(summary)
+  const turnAssistantIndex = findLastAssistantMessageIndex(messages, summary.turnId)
+  const insertIndex = turnAssistantIndex >= 0
+    ? turnAssistantIndex
+    : findLastAssistantMessageIndex(messages)
+  if (insertIndex < 0) {
+    return [...messages, summaryMessage]
+  }
+  const next = [...messages]
   next.splice(insertIndex, 0, summaryMessage)
   return next
 }
@@ -1625,6 +1633,45 @@ export function useDesktopState() {
     }
     return rows.sort((first, second) => first.receivedAtIso.localeCompare(second.receivedAtIso))
   })
+  function buildLiveProcessEntries(
+    threadId: string,
+    activity: TurnActivityState | undefined,
+  ): UiLiveProcessEntry[] {
+    const processes: UiLiveProcessEntry[] = []
+    const commands = liveCommandsByThreadId.value[threadId] ?? []
+    if (commands.length > 0) {
+      const hasRunningCommand = commands.some((message) => message.commandExecution?.status === 'inProgress')
+      processes.push({
+        kind: 'command',
+        label: hasRunningCommand
+          ? (commands.length > 1 ? 'Running multiple commands' : 'Running a command')
+          : (commands.length > 1 ? 'Ran multiple commands' : 'Ran a command'),
+      })
+    }
+
+    const changedFileCount = (liveFileChangeMessagesByThreadId.value[threadId] ?? [])
+      .reduce((total, message) => total + (message.fileChanges?.length ?? 0), 0)
+    if (changedFileCount > 0) {
+      processes.push({
+        kind: 'fileChange',
+        label: changedFileCount > 1 ? 'Edited multiple files' : 'Edited a file',
+      })
+    }
+
+    const activityValues = [activity?.label ?? '', ...(activity?.details ?? [])]
+    const reconnectDetail = activityValues.find((value) => /reconnect|retry|重新连接|重连/iu.test(value))
+    if (reconnectDetail) {
+      const detail = reconnectDetail.replace(/^(?:reconnecting|reconnect(?:ing)?|retry(?:ing)?|正在重新连接|重新连接|重连)\s*/iu, '')
+      processes.push({
+        kind: 'connection',
+        label: 'Reconnecting',
+        detail: detail || undefined,
+      })
+    }
+
+    return processes
+  }
+
   const selectedLiveOverlay = computed<UiLiveOverlay | null>(() => {
     const threadId = selectedThreadId.value
     if (!threadId) return null
@@ -1652,8 +1699,10 @@ export function useDesktopState() {
 
     if (!isInProgress && !activity && !reasoningText && !errorText) return null
     return {
+      turnId: isInProgress ? (activeTurnIdByThreadId.value[threadId] ?? '') : '',
       activityLabel: activity?.label || 'Thinking',
       activityDetails: activity?.details ?? [],
+      processes: buildLiveProcessEntries(threadId, activity),
       reasoningText,
       errorText,
     }

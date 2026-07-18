@@ -1,5 +1,9 @@
 <template>
-  <form class="thread-composer" @submit.prevent="onSubmit(isTurnInProgress ? activeInProgressMode : 'steer')">
+  <form
+    class="thread-composer"
+    :style="expandedViewportStyle"
+    @submit.prevent="onSubmit(isTurnInProgress ? activeInProgressMode : 'steer')"
+  >
     <p v-if="dictationErrorText" class="thread-composer-dictation-error">
       {{ dictationErrorText }}
     </p>
@@ -298,7 +302,7 @@
                 @click="openComposerConfigSubmenu('reasoning')"
                 @mouseenter="openComposerConfigSubmenu('reasoning')"
               >
-                <span class="thread-composer-config-option-label">{{ t('Reasoning effort') }}</span>
+                <span class="thread-composer-config-option-label">{{ t('Effort') }}</span>
                 <span class="thread-composer-config-option-value">{{ selectedReasoningLabel }}</span>
                 <IconTablerChevronRight class="thread-composer-config-nav-icon" />
               </button>
@@ -421,7 +425,7 @@
               class="thread-composer-config-submenu"
               role="menu"
             >
-              <div class="thread-composer-config-heading">{{ t('Reasoning effort') }}</div>
+              <div class="thread-composer-config-heading">{{ t('Effort') }}</div>
               <button
                 v-for="option in reasoningOptions"
                 :key="option.value"
@@ -672,7 +676,7 @@ const emit = defineEmits<{
   'update:selected-speed-mode': [mode: SpeedMode]
   'update:selected-runtime-config': [config: CodexRuntimeConfig]
 }>()
-const { t } = useUiLanguage()
+const { t, uiLanguage } = useUiLanguage()
 
 type SelectedImage = {
   id: string
@@ -698,6 +702,7 @@ type AttachmentBatchStats = {
 const CONTEXT_WINDOW_BASELINE_TOKENS = 12000
 const PASTED_TEXT_FILE_THRESHOLD = 2000
 const PROMPT_OPTION_PREFIX = 'prompt:'
+const MOBILE_EXPANDED_COMPOSER_TOP_GAP = 60
 
 const draft = ref('')
 const selectedImages = ref<SelectedImage[]>([])
@@ -762,6 +767,8 @@ const isFileMentionOpen = ref(false)
 const fileMentionHighlightedIndex = ref(0)
 const isComposerExpanded = ref(false)
 const isDraftOverflowing = ref(false)
+const visualViewportHeight = ref(0)
+const visualViewportOffsetTop = ref(0)
 let composerOverflowMeasurementQueued = false
 const draftGeneration = ref(0)
 let fileMentionSearchToken = 0
@@ -773,15 +780,24 @@ const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.
 const DRAFT_STORAGE_PREFIX = 'codex-web-local.thread-draft.v1.'
 let lastActiveThreadId = ''
 
+function getReasoningOptionLabel(value: ReasoningEffort): string {
+  if (value === 'low') return uiLanguage.value === 'zh-CN' ? '轻度' : 'Light'
+  if (value === 'none') return t('None')
+  if (value === 'minimal') return t('Minimal')
+  if (value === 'medium') return t('Medium')
+  if (value === 'high') return t('High')
+  return t('Extra High')
+}
+
 const reasoningOptions = computed<Array<{ value: ReasoningEffort | 'xhigh-fast'; label: string; description: string }>>(() => {
   const options: Array<{ value: ReasoningEffort | 'xhigh-fast'; label: string; description: string }> =
     props.reasoningEffortOptions.map((value) => ({
     value,
-    label: value === 'none' ? t('None') : value === 'minimal' ? t('Minimal') : value === 'low' ? t('Low') : value === 'medium' ? t('Medium') : value === 'high' ? t('High') : t('Extra high'),
+    label: getReasoningOptionLabel(value),
     description: '',
   }))
   if (props.selectedModelSupportsFast) {
-    options.push({ value: 'xhigh-fast', label: t('Extra high'), description: t('Uses usage limits faster') })
+    options.push({ value: 'xhigh-fast', label: t('Ultra'), description: t('Consumes usage limits faster') })
   }
   return options
 })
@@ -995,6 +1011,13 @@ const draftLineCount = computed(() => draft.value.split('\n').length)
 const hasExpandedComposerToggle = computed(() =>
   isComposerExpanded.value || draftLineCount.value >= 6 || isDraftOverflowing.value,
 )
+const expandedViewportStyle = computed(() => {
+  if (!isComposerExpanded.value || visualViewportHeight.value <= 0) return undefined
+  return {
+    '--thread-composer-expanded-height': `${Math.max(visualViewportHeight.value - MOBILE_EXPANDED_COMPOSER_TOP_GAP, 0)}px`,
+    '--thread-composer-expanded-top': `${visualViewportOffsetTop.value + MOBILE_EXPANDED_COMPOSER_TOP_GAP}px`,
+  }
+})
 const contextUsageView = computed(() => buildContextUsageView(props.threadTokenUsage ?? null))
 const contextUsagePercentText = computed(() => contextUsageView.value?.percentText ?? '')
 const contextUsageTokenText = computed(() => contextUsageView.value?.tokenText ?? '')
@@ -1246,8 +1269,16 @@ function queueComposerOverflowMeasurement(): void {
 function toggleComposerExpanded(): void {
   if (isInteractionDisabled.value) return
   isComposerExpanded.value = !isComposerExpanded.value
+  updateVisualViewportMetrics()
   queueComposerOverflowMeasurement()
   void nextTick(() => inputRef.value?.focus())
+}
+
+function updateVisualViewportMetrics(): void {
+  const viewport = window.visualViewport
+  if (!viewport) return
+  visualViewportHeight.value = Math.round(viewport.height)
+  visualViewportOffsetTop.value = Math.round(viewport.offsetTop)
 }
 
 function onModelSelect(value: string): void {
@@ -1283,6 +1314,9 @@ function onReasoningEffortSelect(value: ReasoningEffort | 'xhigh-fast'): void {
     emit('update:selected-speed-mode', 'fast')
   } else {
     emit('update:selected-reasoning-effort', value)
+    if (value === 'xhigh') {
+      emit('update:selected-speed-mode', 'standard')
+    }
   }
   closeComposerConfigMenu()
 }
@@ -1737,6 +1771,13 @@ function onInputChange(): void {
 }
 
 function onInputKeydown(event: KeyboardEvent): void {
+  if (event.isComposing) return
+
+  // Android and iOS virtual keyboards do not expose a reliable key-up event
+  // for a long press. Keep Return native on touch-sized layouts; the send
+  // button remains available and Return always inserts a real line break.
+  if (isMobile.value && event.key === 'Enter' && !event.metaKey && !event.ctrlKey) return
+
   if (isFileMentionOpen.value) {
     if (event.key === 'Escape') {
       event.preventDefault()
@@ -2007,6 +2048,9 @@ onMounted(() => {
   window.addEventListener('drop', onWindowDragCleanup)
   window.addEventListener('dragend', onWindowDragCleanup)
   window.addEventListener('blur', onWindowDragCleanup)
+  window.visualViewport?.addEventListener('resize', updateVisualViewportMetrics)
+  window.visualViewport?.addEventListener('scroll', updateVisualViewportMetrics)
+  updateVisualViewportMetrics()
   void reloadPrompts()
   queueComposerOverflowMeasurement()
 })
@@ -2025,6 +2069,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerup', onDictationPressEnd)
   window.removeEventListener('pointercancel', onDictationPressEnd)
   window.removeEventListener('blur', onDictationPressEnd)
+  window.visualViewport?.removeEventListener('resize', updateVisualViewportMetrics)
+  window.visualViewport?.removeEventListener('scroll', updateVisualViewportMetrics)
   if (fileMentionDebounceTimer) {
     clearTimeout(fileMentionDebounceTimer)
   }
@@ -2085,6 +2131,17 @@ watch(
 
 .thread-composer:has(.thread-composer-input-wrap--expanded) {
   @apply fixed inset-0 z-50 max-w-none bg-white/95 p-3 sm:p-6;
+}
+
+@media (max-width: 640px) {
+  .thread-composer:has(.thread-composer-input-wrap--expanded) {
+    top: var(--thread-composer-expanded-top, 60px);
+    bottom: auto;
+    height: var(--thread-composer-expanded-height, calc(100dvh - 60px));
+    max-height: var(--thread-composer-expanded-height, calc(100dvh - 60px));
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
 }
 
 .thread-composer-shell {

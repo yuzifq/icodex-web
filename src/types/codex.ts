@@ -220,6 +220,8 @@ export type UiMessage = {
   plan?: UiPlanData
   turnId?: string
   turnIndex?: number
+  turnDurationMs?: number
+  isTurnActivity?: boolean
   isAutomationRun?: boolean
   automationDisplayName?: string | null
 }
@@ -245,10 +247,18 @@ export type UiServerRequestReply = {
 }
 
 export type UiLiveOverlay = {
+  turnId: string
   activityLabel: string
   activityDetails: string[]
+  processes: UiLiveProcessEntry[]
   reasoningText: string
   errorText: string
+}
+
+export type UiLiveProcessEntry = {
+  kind: 'command' | 'fileChange' | 'connection'
+  label: string
+  detail?: string
 }
 
 export type UiCreditsSnapshot = {

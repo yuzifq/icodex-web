@@ -271,45 +271,9 @@
                   <button type="button" class="worked-separator" @click="toggleWorkedExpand(message)">
                     <span class="worked-separator-line" aria-hidden="true" />
                     <span class="worked-chevron" :class="{ 'worked-chevron-open': isWorkedExpanded(message) }">▶</span>
-                    <p class="worked-separator-text">{{ message.text }}</p>
+                    <p class="worked-separator-text">{{ workedSummaryText(message) }}</p>
                     <span class="worked-separator-line" aria-hidden="true" />
                   </button>
-                  <div v-if="isWorkedExpanded(message)" class="worked-details">
-                    <div
-                      v-for="cmd in getCommandsForWorked(messages, messages.indexOf(message))"
-                      :key="`worked-cmd-${cmd.id}`"
-                      class="worked-cmd-item"
-                    >
-                      <button
-                        type="button"
-                        class="cmd-row"
-                        :class="[
-                          commandStatusClass(cmd),
-                          {
-                            'cmd-expanded': isCommandExpanded(cmd),
-                            'cmd-compact': isCommandCompact(cmd),
-                          },
-                        ]"
-                        @click="toggleCommandExpand(cmd)"
-                      >
-                        <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isCommandExpanded(cmd) }">▶</span>
-                        <code class="cmd-label">{{ cmd.commandExecution?.command || '(command)' }}</code>
-                        <span class="cmd-status">{{ commandStatusLabel(cmd) }}</span>
-                      </button>
-                      <div
-                        class="cmd-output-wrap"
-                        :class="{ 'cmd-output-visible': isCommandExpanded(cmd) }"
-                      >
-                        <div class="cmd-output-inner">
-                          <pre
-                            class="cmd-output"
-                            :class="{ 'cmd-output-condensed': isCommandOutputCondensed(cmd) }"
-                            v-text="cmd.commandExecution?.aggregatedOutput || '(no output)'"
-                          ></pre>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
                 <div v-else-if="isPlanMessage(message)" class="plan-card" :data-streaming="message.messageType === 'plan.live'">
                   <div class="plan-card-header">
@@ -735,6 +699,19 @@
               >
                 {{ liveOverlay.reasoningText }}
               </p>
+              <div v-if="liveOverlay.processes.length > 0" class="live-overlay-processes">
+                <p
+                  v-for="process in liveOverlay.processes"
+                  :key="`${process.kind}:${process.label}:${process.detail ?? ''}`"
+                  class="live-overlay-process"
+                  :data-kind="process.kind"
+                >
+                  <IconTablerTerminal v-if="process.kind === 'command'" class="icon-svg live-overlay-process-icon" />
+                  <IconTablerFilePencil v-else-if="process.kind === 'fileChange'" class="icon-svg live-overlay-process-icon" />
+                  <IconTablerWifi v-else class="icon-svg live-overlay-process-icon" />
+                  <span>{{ liveProcessLabel(process) }}</span>
+                </p>
+              </div>
               <div v-if="liveOverlay.errorText" class="live-overlay-error">
                 <span>{{ liveOverlay.errorText }}</span>
               </div>
@@ -909,7 +886,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { UiFileChange, UiLiveOverlay, UiMessage, UiPlanStep, UiServerRequest } from '../../types/codex'
+import type { UiFileChange, UiLiveOverlay, UiLiveProcessEntry, UiMessage, UiPlanStep, UiServerRequest } from '../../types/codex'
 import { updateThreadFileChanges } from '../../api/codexGateway'
 import { useMobile } from '../../composables/useMobile'
 import { useUiLanguage } from '../../composables/useUiLanguage'
@@ -920,6 +897,8 @@ import IconTablerArrowUp from '../icons/IconTablerArrowUp.vue'
 import IconTablerCopy from '../icons/IconTablerCopy.vue'
 import IconTablerFilePencil from '../icons/IconTablerFilePencil.vue'
 import IconTablerGitFork from '../icons/IconTablerGitFork.vue'
+import IconTablerTerminal from '../icons/IconTablerTerminal.vue'
+import IconTablerWifi from '../icons/IconTablerWifi.vue'
 import IconTablerX from '../icons/IconTablerX.vue'
 
 type HighlightJsModule = (typeof import('highlight.js/lib/common'))['default']
@@ -1180,6 +1159,38 @@ function isWorkedExpanded(message: UiMessage): boolean {
   return expandedWorkedIds.value.has(message.id)
 }
 
+function formatWorkedDuration(durationMs: number): string {
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const parts: string[] = []
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0 || hours > 0) parts.push(`${minutes}m`)
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`)
+  return parts.join(' ')
+}
+
+function workedSummaryText(message: UiMessage): string {
+  if (typeof message.turnDurationMs !== 'number' || !Number.isFinite(message.turnDurationMs)) {
+    return t(message.text)
+  }
+  return `${t('Worked for')} ${formatWorkedDuration(message.turnDurationMs)}`
+}
+
+function liveProcessLabel(process: UiLiveProcessEntry): string {
+  const label = t(process.label)
+  return process.detail ? `${label} ${process.detail}` : label
+}
+
+function collapseCompletedTurnActivity(): void {
+  expandedCommandIds.value = new Set()
+  collapsedAutoCommandIds.value = new Set()
+  expandedCommandGroupIds.value = new Set()
+  expandedWorkedIds.value = new Set()
+  expandedFileChangeSummaryIds.value = new Set()
+}
+
 function toggleFileChangeSummary(message: UiMessage): void {
   const next = new Set(expandedFileChangeSummaryIds.value)
   if (next.has(message.id)) next.delete(message.id)
@@ -1253,16 +1264,6 @@ function pruneCommandIdSet(source: Set<string>, validIds: Set<string>): Set<stri
   return next.size === source.size ? source : next
 }
 
-function getCommandsForWorked(messages: UiMessage[], workedIndex: number): UiMessage[] {
-  const result: UiMessage[] = []
-  for (let i = workedIndex - 1; i >= 0; i--) {
-    const m = messages[i]
-    if (m.messageType === 'commandExecution') result.unshift(m)
-    else if (m.role === 'user' || m.messageType === 'worked') break
-  }
-  return result
-}
-
 const props = defineProps<{
   messages: UiMessage[]
   pendingRequests: UiServerRequest[]
@@ -1280,6 +1281,12 @@ const emit = defineEmits<{
   rollback: [payload: { turnId: string }]
   implementPlan: [payload: { turnId: string }]
 }>()
+
+watch(isLiveTurnRuntime, (isLive, wasLive) => {
+  if (wasLive && !isLive) {
+    collapseCompletedTurnActivity()
+  }
+})
 
 const conversationListRef = ref<HTMLElement | null>(null)
 const bottomAnchorRef = ref<HTMLElement | null>(null)
@@ -1386,7 +1393,38 @@ const LOAD_MORE_SCROLL_THRESHOLD_PX = 200
 const renderWindowStart = ref(0)
 const isLoadingMore = ref(false)
 
-const visibleMessages = computed(() => props.messages.slice(renderWindowStart.value))
+function isLiveProcessMessage(message: UiMessage): boolean {
+  const liveTurnId = props.liveOverlay?.turnId.trim() ?? ''
+  if (!liveTurnId || message.turnId !== liveTurnId) return false
+  return isCommandMessage(message) || isFileChangeMessage(message)
+}
+
+const turnActivityById = computed(() => {
+  const result = new Map<string, UiMessage[]>()
+  for (const message of props.messages) {
+    const turnId = message.turnId?.trim() ?? ''
+    if (!message.isTurnActivity || !turnId) continue
+    const items = result.get(turnId) ?? []
+    items.push(message)
+    result.set(turnId, items)
+  }
+  return result
+})
+
+const displayMessages = computed(() => {
+  const result: UiMessage[] = []
+  for (const message of props.messages) {
+    if (message.isTurnActivity || isLiveProcessMessage(message)) continue
+    result.push(message)
+
+    if (message.messageType !== 'worked' || !isWorkedExpanded(message)) continue
+    const turnId = message.turnId?.trim() ?? ''
+    if (turnId) result.push(...(turnActivityById.value.get(turnId) ?? []))
+  }
+  return result
+})
+
+const visibleMessages = computed(() => displayMessages.value.slice(renderWindowStart.value))
 const hasMoreAbove = computed(() => renderWindowStart.value > 0 || props.hasMorePersistedAbove === true)
 
 const showJumpToLatestButton = computed(
@@ -1734,6 +1772,7 @@ const copyableResponseContentByAnchorId = computed<Record<string, string>>(() =>
 
   for (const message of props.messages) {
     if (!isCopyableAssistantMessage(message)) continue
+    if (message.isTurnActivity) continue
 
     const content = buildCopyableMessageContent(message)
     if (!content) continue
@@ -3867,11 +3906,15 @@ watch(
       ]),
     )
 
-    // Keep renderWindowStart in bounds whenever the message list changes length.
-    // Following output: always pin the window to the last RENDER_WINDOW_SIZE messages so
-    //   the rendered count stays bounded (handles both growth and shrink/rollback).
-    // Scrolled up: only clamp downward so renderWindowStart never exceeds the list length
-    //   (prevents visibleMessages from becoming empty after a rollback).
+    await scheduleConversationScroll()
+  },
+)
+
+watch(
+  displayMessages,
+  async (next) => {
+    if (props.isLoading) return
+
     if (autoFollowOutput.value) {
       renderWindowStart.value = Math.max(0, next.length - RENDER_WINDOW_SIZE)
     } else {
@@ -3927,7 +3970,7 @@ watch(
   () => props.isLoading,
   async (loading) => {
     if (loading) return
-    renderWindowStart.value = Math.max(0, props.messages.length - RENDER_WINDOW_SIZE)
+    renderWindowStart.value = Math.max(0, displayMessages.value.length - RENDER_WINDOW_SIZE)
     await scheduleConversationScroll()
   },
 )
@@ -3942,7 +3985,7 @@ watch(
     fileChangeActionError.value = {}
     fileChangeRedoPatchIds.value = {}
     // Apply immediately for cached threads where isLoading never toggles.
-    renderWindowStart.value = Math.max(0, props.messages.length - RENDER_WINDOW_SIZE)
+    renderWindowStart.value = Math.max(0, displayMessages.value.length - RENDER_WINDOW_SIZE)
     await scheduleConversationScroll()
   },
   { flush: 'post' },
@@ -4170,6 +4213,18 @@ onBeforeUnmount(() => {
 
 .live-overlay-reasoning::-webkit-scrollbar {
   display: none;
+}
+
+.live-overlay-processes {
+  @apply flex flex-col gap-2 pt-1;
+}
+
+.live-overlay-process {
+  @apply m-0 flex items-center gap-2 text-sm leading-5 text-zinc-500;
+}
+
+.live-overlay-process-icon {
+  @apply h-4 w-4 shrink-0 text-zinc-400;
 }
 
 .live-overlay-error {
